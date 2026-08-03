@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Grunge, SirenLights, PoliceTape, PhotoBox, PrizeBar } from '../fx'
+import { Grunge, SirenLights, PoliceTape, PhotoBox, PrizeBar, PrizeLadder } from '../fx'
 import type { AppState, Config, CulpritState, GameConfig } from '../types'
 
 export default function GameCulprit({
@@ -23,11 +23,7 @@ export default function GameCulprit({
       <Grunge />
       <SirenLights intensity={g.picked !== null && !g.revealed ? 1 : 0.4} />
 
-      <PrizeBar
-        earned={state.prize.earned}
-        total={config.prize.totalPool}
-        currency={config.prize.currency}
-      />
+      <PrizeBar earned={state.prize.earned} meta={state.meta} bonus={state.prize.bonus} />
 
       {/* 헤더 */}
       <div className="relative z-20 flex items-center justify-between px-[2.5vw] pt-[1.2vh]">
@@ -190,22 +186,27 @@ export default function GameCulprit({
           ))}
         </div>
 
-        <div className="plate tex-plate px-[1.5vw] py-[0.5vh]">
-          <span className="txt-head text-[1.2vw] text-steel">적중 시 </span>
-          <span className="txt-num txt-glow-gold text-[2vw]">
-            +{(gc.prizePerRound || 0).toLocaleString('ko-KR')}
-          </span>
-          <span className="txt-head text-[1vw] text-steel"> · 클리어 </span>
-          <span className="txt-num txt-glow-gold text-[1.7vw]">
-            +{(gc.clearBonus || 0).toLocaleString('ko-KR')}
-          </span>
+        <div className="plate tex-plate px-[1.2vw] py-[0.4vh] text-center">
+          <div className="txt-head text-[1vw] text-tape">
+            성공 조건 · {g.results.length}회 중 {gc.clearThreshold ?? 1}회 이상 적중
+          </div>
+          <div className="txt-head text-[1.1vw] text-steel">
+            성공 시 보석금{' '}
+            <span className="txt-num txt-glow-gold text-[1.8vw]">
+              {state.meta.next}
+              {state.meta.unit}
+            </span>{' '}
+            도달
+          </div>
         </div>
 
-        <div className="plate tex-plate px-[1.2vw] py-[0.5vh]">
-          <span className="txt-head text-[1.1vw] text-tape">
-            성공 조건 · {g.results.length}회 중 {gc.clearThreshold ?? 1}회 이상 적중
-          </span>
-        </div>
+        <PrizeLadder
+          ladder={config.prize.ladder}
+          cleared={state.meta.cleared}
+          unit={state.meta.unit}
+          maxTotal={state.meta.maxTotal}
+          bonus={state.prize.bonus}
+        />
       </div>
     </div>
   )

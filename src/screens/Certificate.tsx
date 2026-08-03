@@ -4,14 +4,10 @@ import type { AppState, Config } from '../types'
 
 export default function Certificate({ state, config }: { state: AppState; config: Config }) {
   const earned = state.prize.earned
-  const total = config.prize.totalPool
+  const m = state.meta
+  const total = m.maxTotal
   const pct = total > 0 ? Math.min(100, (earned / total) * 100) : 0
-
-  const wins = Object.values(state.games).reduce(
-    (a, g) => a + g.results.filter((r) => r === 'win').length,
-    0
-  )
-  const cleared = Object.values(state.games).filter((g) => g.cleared).length
+  const cleared = m.cleared
 
   return (
     <div
@@ -137,13 +133,12 @@ export default function Certificate({ state, config }: { state: AppState; config
               }}
             >
               <RollingNumber value={earned} duration={2200} />
-              <span className="text-[4vw]">{config.prize.currency}</span>
+              <span className="text-[4vw]">{m.unit}</span>
             </div>
           </div>
           <div className="txt-head mt-[0.3vh] text-[1.3vw] text-[#5a4408]">
-            총 목표 {total.toLocaleString('ko-KR')}
-            {config.prize.currency} 중 {pct.toFixed(1)}% 확보 · 성공 {wins}회 · 집행 클리어{' '}
-            {cleared}건
+            최대 {total}
+            {m.unit} 중 {pct.toFixed(0)}% 확보 · 집행 {cleared} / {m.totalGames} 성공
           </div>
         </div>
 

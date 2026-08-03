@@ -57,11 +57,7 @@ export default function GameBonus({
         />
       </div>
 
-      <PrizeBar
-        earned={state.prize.earned}
-        total={config.prize.totalPool}
-        currency={config.prize.currency}
-      />
+      <PrizeBar earned={state.prize.earned} meta={state.meta} bonus={state.prize.bonus} />
 
       {/* 제목 */}
       <div className="relative z-20 mt-[1.5vh] flex flex-col items-center">

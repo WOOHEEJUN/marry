@@ -1,6 +1,7 @@
 export type Phase = 'intro' | 'dashboard' | 'mugshot' | 'game' | 'certificate'
 export type RoundResult = 'pending' | 'win' | 'lose'
 export type Role = 'tv' | 'control' | 'admin' | 'spectator'
+export type GameType = 'culprit' | 'voice' | 'bonus' | 'simple'
 
 export interface Suspect {
   id: number
@@ -16,16 +17,19 @@ export interface Evidence {
 
 export interface GameConfig {
   id: string
-  type: 'culprit' | 'voice' | 'bonus'
+  type: GameType
+  /** true 면 사다리에 포함되지 않는 보너스/부활 게임 */
+  bonus?: boolean
   no: string
   title: string
   subtitle?: string
+  /** 진행 방법 설명 (TV·컨트롤러에 표시) */
+  rule?: string
+  /** 성공 조건 설명 */
+  win?: string
   rounds?: number
-  prizePerRound?: number
-  clearBonus?: number
   clearThreshold?: number
   maxListens?: number
-  perfectBonus?: number
   evidences?: Evidence[]
   questions?: string[]
   interviews?: { q: string; a?: string }[]
@@ -44,63 +48,83 @@ export interface Config {
     crimes: string[]
   }
   bride: { name: string; photo?: string }
-  prize: { totalPool: number; currency: string; autoDistribute?: boolean }
+  prize: {
+    unit: string
+    /** 게임을 N개 클리어했을 때 '누적 도달' 금액 */
+    ladder: number[]
+    maxTotal: number
+    bonusStep?: number
+  }
   suspects: Suspect[]
   games: GameConfig[]
   controlPin?: string
 }
 
-export interface CulpritState {
-  type: 'culprit'
+interface GameBase {
+  cleared: boolean
+  failed: boolean
   round: number
+  revives: number
   results: RoundResult[]
+}
+
+export interface CulpritState extends GameBase {
+  type: 'culprit'
   picked: number | null
   guilty: number | null
   revealed: boolean
-  cleared: boolean
 }
 
-export interface VoiceState {
+export interface VoiceState extends GameBase {
   type: 'voice'
-  round: number
-  results: RoundResult[]
   listensLeft: number
   revealed: boolean
-  countdown: number | null
-  cleared: boolean
   wordLength: number
   word: string | null
   allWords?: string[]
 }
 
-export interface BonusState {
+export interface BonusState extends GameBase {
   type: 'bonus'
-  round: number
-  results: RoundResult[]
   revealed: boolean
-  answered: string
-  cleared: boolean
   question: string
   answer: string | null
 }
 
-export type GameState = CulpritState | VoiceState | BonusState
+export interface SimpleState extends GameBase {
+  type: 'simple'
+}
+
+export type GameState = CulpritState | VoiceState | BonusState | SimpleState
 
 export interface PrizeLog {
   id: number
   at: number
   label: string
-  amount: number
+  delta: number
+  total: number
+}
+
+export interface Meta {
+  /** 클리어한 본게임 수 */
+  cleared: number
+  totalGames: number
+  /** 현재 도달 금액 (사다리) */
+  current: number
+  /** 다음 단계 금액 */
+  next: number
+  maxTotal: number
+  unit: string
 }
 
 export interface AppState {
   phase: Phase
   activeGameId: string | null
-  prize: { earned: number }
+  prize: { bonus: number; earned: number }
   log: PrizeLog[]
   games: Record<string, GameState>
   banner: string | null
-  revivePending: { gameId: string | null } | null
+  meta: Meta
 }
 
 export interface Conn {
@@ -114,6 +138,9 @@ export interface Fx {
   kind: string
   _id: string
   amount?: number
+  total?: number
+  unit?: string
+  step?: number
   text?: string
   tone?: 'red' | 'blue' | 'gold'
   title?: string

@@ -599,6 +599,23 @@ body[data-role='tv'] {
   animation: bars-drop 0.75s cubic-bezier(0.3, 1.3, 0.5, 1) forwards;
 }
 
+/* 화면 전환 — fill-mode 를 쓰지 않는다.
+   탭이 백그라운드라 애니메이션이 실행되지 않아도 기본 상태(보임)로 남아야 하므로,
+   "애니메이션이 끝나야 보이는" 구조를 절대 만들지 않는다. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.screen-in {
+  animation: screen-in 0.32s ease-out;
+}
+
 /* 등장 */
 @keyframes pop-in {
   0% {

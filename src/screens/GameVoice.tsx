@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Grunge, SirenLights, PrizeBar, PoliceTape } from '../fx'
+import { Grunge, SirenLights, PrizeBar, PoliceTape, PrizeLadder } from '../fx'
 import type { AppState, Config, GameConfig, VoiceState } from '../types'
 
 /** 감청 파형 (가짜 오실로스코프) */
@@ -58,11 +58,7 @@ export default function GameVoice({
       <Grunge />
       <SirenLights intensity={0.3} />
 
-      <PrizeBar
-        earned={state.prize.earned}
-        total={config.prize.totalPool}
-        currency={config.prize.currency}
-      />
+      <PrizeBar earned={state.prize.earned} meta={state.meta} bonus={state.prize.bonus} />
 
       {/* 헤더 */}
       <div className="relative z-20 flex items-center justify-between px-[2.5vw] pt-[1.2vh]">
@@ -224,20 +220,27 @@ export default function GameVoice({
           ))}
         </div>
 
-        <div className="plate tex-plate px-[1.5vw] py-[0.5vh]">
-          <span className="txt-head text-[1.1vw] text-steel">정답 </span>
-          <span className="txt-num txt-glow-gold text-[1.9vw]">
-            +{(gc.prizePerRound || 0).toLocaleString('ko-KR')}
-          </span>
-          <span className="txt-head text-[1vw] text-steel"> · 1회청취 </span>
-          <span className="txt-num text-[1.5vw] text-cash">
-            +{(gc.perfectBonus || 0).toLocaleString('ko-KR')}
-          </span>
-          <span className="txt-head text-[1vw] text-steel"> · 클리어 </span>
-          <span className="txt-num txt-glow-gold text-[1.7vw]">
-            +{(gc.clearBonus || 0).toLocaleString('ko-KR')}
-          </span>
+        <div className="plate tex-plate px-[1.2vw] py-[0.4vh] text-center">
+          <div className="txt-head text-[1vw] text-tape">
+            성공 조건 · {g.results.length}문제 중 {need}문제 이상 정답
+          </div>
+          <div className="txt-head text-[1.1vw] text-steel">
+            성공 시 보석금{' '}
+            <span className="txt-num txt-glow-gold text-[1.8vw]">
+              {state.meta.next}
+              {state.meta.unit}
+            </span>{' '}
+            도달
+          </div>
         </div>
+
+        <PrizeLadder
+          ladder={config.prize.ladder}
+          cleared={state.meta.cleared}
+          unit={state.meta.unit}
+          maxTotal={state.meta.maxTotal}
+          bonus={state.prize.bonus}
+        />
       </div>
     </div>
   )

@@ -8,6 +8,7 @@ import Mugshot from './screens/Mugshot'
 import GameCulprit from './screens/GameCulprit'
 import GameVoice from './screens/GameVoice'
 import GameBonus from './screens/GameBonus'
+import GameSimple from './screens/GameSimple'
 import Certificate from './screens/Certificate'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Role } from './types'
@@ -60,7 +61,7 @@ export default function Tv({ role = 'tv' }: { role?: Role }) {
         if (gc.type === 'culprit') return <GameCulprit state={state} config={config} gc={gc} />
         if (gc.type === 'voice') return <GameVoice state={state} config={config} gc={gc} />
         if (gc.type === 'bonus') return <GameBonus state={state} config={config} gc={gc} />
-        return <Dashboard state={state} config={config} />
+        return <GameSimple state={state} config={config} gc={gc} />
       case 'dashboard':
       default:
         return <Dashboard state={state} config={config} />
@@ -71,18 +72,15 @@ export default function Tv({ role = 'tv' }: { role?: Role }) {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={{ opacity: 0, scale: 1.06 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.96 }}
-          transition={{ duration: 0.35 }}
-          className="h-full w-full"
-        >
-          {screen}
-        </motion.div>
-      </AnimatePresence>
+      {/*
+        화면 전환은 CSS 애니메이션으로만 처리한다.
+        AnimatePresence(mode="wait") 는 exit 애니메이션이 끝나야 다음 화면을 그리는데,
+        탭이 백그라운드로 가면 rAF 가 멈춰 전환이 영원히 완료되지 않는다.
+        파티 중 노트북 화면이 가려지는 상황에서 TV가 멈추면 안 되므로 사용하지 않는다.
+      */}
+      <div key={key} className="screen-in h-full w-full">
+        {screen}
+      </div>
 
       <FxLayer fx={fx} />
 

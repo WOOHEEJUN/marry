@@ -290,10 +290,16 @@ function StampOverlay({ text, tone, onDone }: { text: string; tone?: string; onD
 function ClearOverlay({
   amount,
   title,
+  total,
+  unit,
+  step,
   onDone,
 }: {
   amount?: number
   title?: string
+  total?: number
+  unit?: string
+  step?: number
   onDone: () => void
 }) {
   useEffect(() => {
@@ -323,11 +329,23 @@ function ClearOverlay({
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 220, damping: 12 }}
       >
-        <div className="txt-head txt-glow-gold anim-thump text-[9vw] leading-none">집행 성공</div>
-        {title && <div className="txt-head mt-2 text-[3vw] text-tape">{title}</div>}
-        {!!amount && (
-          <div className="txt-num txt-gold-plate mt-4 text-[9vw] leading-none">
-            +{amount.toLocaleString('ko-KR')}
+        <div className="txt-head txt-glow-gold anim-thump text-[8vw] leading-none">집행 성공</div>
+        {title && <div className="txt-head mt-1 text-[2.6vw] text-tape">{title}</div>}
+        {!!step && (
+          <div className="txt-head mt-2 text-[2vw] text-white/80">
+            보석금 {step}단계 도달
+          </div>
+        )}
+        {typeof total === 'number' && (
+          <div className="txt-num txt-gold-plate mt-2 text-[10vw] leading-none">
+            {total.toLocaleString('ko-KR')}
+            <span className="text-[4vw]">{unit || ''}</span>
+          </div>
+        )}
+        {!!amount && amount > 0 && (
+          <div className="txt-num mt-1 text-[3vw] leading-none text-cash">
+            ▲ +{amount.toLocaleString('ko-KR')}
+            {unit || ''}
           </div>
         )}
       </motion.div>
@@ -448,6 +466,9 @@ export function FxLayer({ fx }: { fx: Fx | null }) {
                 key={f._id}
                 amount={f.amount}
                 title={f.title}
+                total={f.total}
+                unit={f.unit}
+                step={f.step}
                 onDone={() => drop(f._id)}
               />
             )
@@ -504,43 +525,159 @@ export function PhotoBox({
   )
 }
 
+/** 상금 사다리 — 게임을 깰수록 한 칸씩 올라간다 */
+export function PrizeLadder({
+  ladder,
+  cleared,
+  unit,
+  maxTotal,
+  bonus = 0,
+  size = 'md',
+}: {
+  ladder: number[]
+  cleared: number
+  unit: string
+  maxTotal: number
+  bonus?: number
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const f =
+    size === 'lg'
+      ? { step: '2.4vw', label: '1vw', h: '9vh', gap: '0.7vw' }
+      : size === 'sm'
+        ? { step: '17px', label: '10px', h: '48px', gap: '5px' }
+        : { step: '1.7vw', label: '0.8vw', h: '6.5vh', gap: '0.5vw' }
+
+  return (
+    <div className="flex items-end" style={{ gap: f.gap }}>
+      {ladder.map((amt, i) => {
+        const done = i < cleared
+        const now = i === cleared
+        return (
+          <div key={i} className="flex flex-col items-center" style={{ gap: 2 }}>
+            <div
+              className={`plate relative flex items-center justify-center overflow-hidden border-[3px] px-[0.5vw] ${
+                done
+                  ? 'anim-sheen border-gold'
+                  : now
+                    ? 'anim-blink border-tape'
+                    : 'border-con-500'
+              }`}
+              style={{
+                height: f.h,
+                minWidth: size === 'sm' ? 52 : '5vw',
+                background: done
+                  ? 'linear-gradient(180deg,#8a6508,#ffc72c 55%,#b8860b)'
+                  : now
+                    ? 'linear-gradient(180deg,#3a3a3a,#141414)'
+                    : 'linear-gradient(180deg,#1e1e1e,#0a0a0a)',
+                boxShadow: done ? '0 0 22px rgba(255,199,44,.75)' : 'inset 0 4px 12px rgba(0,0,0,.9)',
+              }}
+            >
+              <span
+                className={`txt-num leading-none ${
+                  done ? 'text-black' : now ? 'text-tape' : 'text-con-300'
+                }`}
+                style={{ fontSize: f.step }}
+              >
+                {amt}
+              </span>
+              {done && (
+                <span
+                  className="absolute right-[2px] top-[1px] leading-none"
+                  style={{ fontSize: f.label }}
+                >
+                  ✔
+                </span>
+              )}
+            </div>
+            <span
+              className={`txt-head leading-none ${done ? 'text-gold' : now ? 'text-tape' : 'text-white/25'}`}
+              style={{ fontSize: f.label }}
+            >
+              {i + 1}단
+            </span>
+          </div>
+        )
+      })}
+
+      {/* 보너스 → 최대치 */}
+      <div className="flex flex-col items-center" style={{ gap: 2 }}>
+        <div
+          className={`plate flex items-center justify-center border-[3px] px-[0.5vw] ${
+            bonus > 0 ? 'border-love' : 'border-con-500'
+          }`}
+          style={{
+            height: f.h,
+            minWidth: size === 'sm' ? 52 : '5vw',
+            background:
+              bonus > 0
+                ? 'linear-gradient(180deg,#a30058,#ff3e9d 55%,#a30058)'
+                : 'linear-gradient(180deg,#1e1e1e,#0a0a0a)',
+            boxShadow: bonus > 0 ? '0 0 22px rgba(255,62,157,.7)' : 'inset 0 4px 12px rgba(0,0,0,.9)',
+          }}
+        >
+          <span
+            className={`txt-num leading-none ${bonus > 0 ? 'text-white' : 'text-con-300'}`}
+            style={{ fontSize: f.step }}
+          >
+            {maxTotal}
+          </span>
+        </div>
+        <span
+          className={`txt-head leading-none ${bonus > 0 ? 'text-love-lt' : 'text-white/25'}`}
+          style={{ fontSize: f.label }}
+        >
+          보너스
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /** 상단 고정 보석금 바 */
 export function PrizeBar({
   earned,
-  total,
-  currency = '원',
+  meta,
+  bonus = 0,
 }: {
   earned: number
-  total: number
-  currency?: string
+  meta: { cleared: number; totalGames: number; next: number; maxTotal: number; unit: string }
+  bonus?: number
+  /** 사다리 표시용 */
+  ladder?: number[]
 }) {
-  const pct = total > 0 ? Math.min(100, (earned / total) * 100) : 0
+  const pct = meta.maxTotal > 0 ? Math.min(100, (earned / meta.maxTotal) * 100) : 0
+  const remain = Math.max(0, meta.next - earned)
   return (
-    <div className="relative z-30 w-full border-b-4 border-black bg-black/85 px-[1.5vw] py-[0.8vh] backdrop-blur">
+    <div className="relative z-30 w-full border-b-4 border-black bg-black/85 px-[1.5vw] py-[0.7vh] backdrop-blur">
       <div className="flex items-center gap-[1.5vw]">
-        <div className="txt-head shrink-0 text-[1.5vw] tracking-widest text-tape">
+        <div className="txt-head shrink-0 text-[1.3vw] tracking-widest text-tape">
           💰 적립 보석금
         </div>
-        <div className="txt-num txt-gold-plate shrink-0 text-[3.4vw] leading-none">
+        <div className="txt-num txt-gold-plate shrink-0 text-[3.2vw] leading-none">
           <RollingNumber value={earned} />
-          <span className="ml-1 text-[1.6vw]">{currency}</span>
+          <span className="ml-1 text-[1.5vw]">{meta.unit}</span>
         </div>
-        <div className="relative h-[2.2vh] flex-1 overflow-hidden rounded-full border-[3px] border-black bg-con-800">
+
+        <div className="relative h-[2vh] flex-1 overflow-hidden rounded-full border-[3px] border-black bg-con-800">
           <div
-            className="anim-sheen relative h-full overflow-hidden transition-[width] duration-700 ease-out"
+            className="anim-sheen relative h-full overflow-hidden transition-[width] duration-1000 ease-out"
             style={{
               width: `${pct}%`,
               background: 'linear-gradient(90deg,#b8860b,#ffc72c 55%,#fff3c4)',
               boxShadow: '0 0 18px rgba(255,199,44,.65)',
             }}
           />
-          <div className="txt-head absolute inset-0 flex items-center justify-center text-[1.1vw] text-white/90 drop-shadow-[0_2px_2px_rgba(0,0,0,.9)]">
-            형량 감형률 {pct.toFixed(1)}%
+          <div className="txt-head absolute inset-0 flex items-center justify-center text-[1vw] text-white/90 drop-shadow-[0_2px_2px_rgba(0,0,0,.9)]">
+            집행 {meta.cleared} / {meta.totalGames} 성공
+            {remain > 0 && ` · 다음 단계까지 ${remain}${meta.unit}`}
           </div>
         </div>
-        <div className="txt-head shrink-0 text-[1.1vw] text-white/50">
-          / {total.toLocaleString('ko-KR')}
-          {currency}
+
+        <div className="txt-head shrink-0 text-[1vw] text-white/50">
+          최대 {meta.maxTotal}
+          {meta.unit}
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSync, useFxListener } from './net'
-import { FxLayer, RollingNumber, PoliceTape } from './fx'
+import { FxLayer, RollingNumber, PoliceTape, PrizeLadder } from './fx'
 import { initAudio, playFx } from './sound'
 import type { GameState } from './types'
 
@@ -34,12 +34,11 @@ export default function Spectator() {
     )
   }
 
-  const pct =
-    config.prize.totalPool > 0
-      ? Math.min(100, (state.prize.earned / config.prize.totalPool) * 100)
-      : 0
+  const m = state.meta
+  const pct = m.maxTotal > 0 ? Math.min(100, (state.prize.earned / m.maxTotal) * 100) : 0
   const gc = state.activeGameId ? config.games.find((g) => g.id === state.activeGameId) : null
   const g: GameState | null = state.activeGameId ? state.games[state.activeGameId] : null
+  const remain = Math.max(0, m.next - state.prize.earned)
 
   return (
     <div className="tex-concrete tex-noise relative min-h-full pb-10">
@@ -75,10 +74,11 @@ export default function Spectator() {
           <div className="absolute -inset-3 rounded-full bg-gold/20 blur-2xl" />
           <div className="txt-num txt-gold-plate relative text-[52px] leading-none">
             <RollingNumber value={state.prize.earned} />
+            <span className="text-[22px]">{m.unit}</span>
           </div>
           <div className="txt-head text-[13px] text-white/45">
-            / {config.prize.totalPool.toLocaleString('ko-KR')}
-            {config.prize.currency}
+            집행 {m.cleared} / {m.totalGames} 성공 · 최대 {m.maxTotal}
+            {m.unit}
           </div>
         </motion.div>
 
@@ -92,8 +92,20 @@ export default function Spectator() {
             }}
           />
           <div className="txt-head absolute inset-0 flex items-center justify-center text-[12px] drop-shadow-[0_1px_2px_rgba(0,0,0,.95)]">
-            감형률 {pct.toFixed(1)}%
+            {remain > 0 ? `다음 단계까지 ${remain}${m.unit}` : '최고 단계 도달!'}
           </div>
+        </div>
+
+        {/* 상금 사다리 */}
+        <div className="no-bar mt-3 flex justify-center overflow-x-auto pb-1">
+          <PrizeLadder
+            ladder={config.prize.ladder}
+            cleared={m.cleared}
+            unit={m.unit}
+            maxTotal={m.maxTotal}
+            bonus={state.prize.bonus}
+            size="sm"
+          />
         </div>
       </div>
 
@@ -161,30 +173,38 @@ export default function Spectator() {
       <div className="px-4 pt-4">
         <div className="txt-head mb-2 text-[14px] tracking-widest text-tape">🏛 집행 현황</div>
         <div className="space-y-2">
-          {config.games.map((x) => {
+          {config.games.map((x, i) => {
             const s = state.games[x.id]
-            const wins = s?.results.filter((r) => r === 'win').length ?? 0
             return (
               <div
                 key={x.id}
                 className={`flex items-center justify-between rounded-lg border-[3px] px-3 py-2 ${
                   s?.cleared
                     ? 'border-gold bg-gold/10'
-                    : state.activeGameId === x.id
-                      ? 'border-tape bg-tape/10'
-                      : 'border-black bg-black/40'
+                    : s?.failed
+                      ? 'border-siren-red bg-siren-red/10'
+                      : state.activeGameId === x.id
+                        ? 'border-tape bg-tape/10'
+                        : 'border-black bg-black/40'
                 }`}
               >
                 <div className="min-w-0">
                   <div className="txt-head truncate text-[15px] text-steel-lt">{x.title}</div>
-                  <div className="text-[12px] text-white/40">{x.no}</div>
+                  <div className="text-[12px] text-white/40">
+                    {x.no}
+                    {!x.bonus && ` · ${config.prize.ladder[i] ?? ''}${m.unit}`}
+                  </div>
                 </div>
-                <div className="txt-num shrink-0 text-[20px] text-tape">
-                  {wins}
-                  <span className="text-[13px] text-white/35">
-                    /{s?.results.length ?? x.rounds ?? 0}
-                  </span>
-                  {s?.cleared && <span className="ml-1 text-[15px] text-gold">✔</span>}
+                <div className="txt-head shrink-0 text-[15px]">
+                  {s?.cleared ? (
+                    <span className="text-gold">✅ 성공</span>
+                  ) : s?.failed ? (
+                    <span className="text-siren-red-lt">❌ 실패</span>
+                  ) : state.activeGameId === x.id ? (
+                    <span className="anim-blink text-tape">▶ 진행중</span>
+                  ) : (
+                    <span className="text-white/25">대기</span>
+                  )}
                 </div>
               </div>
             )
@@ -215,12 +235,15 @@ export default function Spectator() {
                   })}
                 </div>
               </div>
-              <div
-                className={`txt-num shrink-0 text-[19px] ${l.amount >= 0 ? 'text-cash' : 'text-siren-red-lt'}`}
-              >
-                {l.amount >= 0 ? '+' : ''}
-                {l.amount.toLocaleString('ko-KR')}
-              </div>
+              {l.delta !== 0 && (
+                <div
+                  className={`txt-num shrink-0 text-[19px] ${l.delta > 0 ? 'text-cash' : 'text-siren-red-lt'}`}
+                >
+                  {l.delta > 0 ? '+' : ''}
+                  {l.delta}
+                  {m.unit}
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

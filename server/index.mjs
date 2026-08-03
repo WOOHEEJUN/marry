@@ -8,7 +8,14 @@ import fastifyWs from '@fastify/websocket'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { initState, reduce, publicView, controlView, publicConfig } from './state.mjs'
+import {
+  initState,
+  mergeState,
+  reduce,
+  publicView,
+  controlView,
+  publicConfig,
+} from './state.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -29,17 +36,24 @@ let config = loadConfig()
 let state
 try {
   if (fs.existsSync(STATE_PATH)) {
-    state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'))
-    // 설정이 바뀌어 게임이 추가된 경우 병합
-    const fresh = initState(config)
-    for (const k of Object.keys(fresh.games)) {
-      if (!state.games[k]) state.games[k] = fresh.games[k]
+    state = mergeState(JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')), config)
+    // 구버전 상태 호환 (라운드 적립 모델 → 사다리 모델)
+    if (!state.prize || typeof state.prize.bonus !== 'number') {
+      state.prize = { bonus: 0, earned: 0 }
+      state.log = []
     }
   } else {
     state = initState(config)
   }
 } catch {
   state = initState(config)
+}
+
+// 되돌리기용 스냅샷 스택 (직전 판정 취소)
+const history = []
+const snapshot = () => {
+  history.push(JSON.stringify(state))
+  if (history.length > 40) history.shift()
 }
 
 let saveTimer = null
@@ -106,11 +120,8 @@ app.post('/api/config', async (req, reply) => {
   try {
     config = { ...next, controlPin: next.controlPin || config.controlPin }
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8')
-    // 새 게임이 추가됐으면 상태에 반영
-    const fresh = initState(config)
-    for (const k of Object.keys(fresh.games)) {
-      if (!state.games[k]) state.games[k] = fresh.games[k]
-    }
+    // 게임 추가/삭제, 라운드 수 변경 등을 상태에 반영
+    state = mergeState(state, config)
     pushConfig()
     pushState()
     persist()
@@ -153,9 +164,27 @@ app.register(async function (f) {
       // 액션은 컨트롤러/어드민만
       if (msg.type === 'action') {
         if (cl.role !== 'control' && cl.role !== 'admin') return
-        const { fx } = reduce(state, config, msg.action)
+
+        // 되돌리기: 직전 스냅샷으로 복원
+        if (msg.action?.type === 'undo') {
+          const prev = history.pop()
+          if (prev) {
+            state = JSON.parse(prev)
+            pushState()
+            pushFx([{ kind: 'undo' }])
+            persist()
+          }
+          return
+        }
+
+        // 화면 이동처럼 되돌릴 필요 없는 것은 스냅샷 생략
+        const skipSnapshot = ['goto', 'banner', 'fx', 'culprit.pick', 'culprit.setGuilty']
+        if (!skipSnapshot.includes(msg.action?.type)) snapshot()
+
+        const r = reduce(state, config, msg.action)
+        state = r.state
         pushState()
-        pushFx(fx)
+        pushFx(r.fx)
         persist()
         return
       }
