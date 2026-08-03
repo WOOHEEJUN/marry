@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useSync } from './net'
-import { PrizeLadder } from './fx'
 import type {
   AppState,
   BonusState,
@@ -15,98 +14,136 @@ import type {
 const PIN_KEY = 'marry.pin'
 
 // ══════════════════════════════════════════════════════════════
-// 공용 소품
+// 기본 요소
 // ══════════════════════════════════════════════════════════════
 
-function Section({
+function Card({
   title,
   desc,
+  right,
+  active,
   children,
-  tone = 'steel',
 }: {
-  title: string
+  title?: string
   desc?: string
+  right?: React.ReactNode
+  active?: boolean
   children: React.ReactNode
-  tone?: 'steel' | 'red' | 'love' | 'gold'
 }) {
-  const border =
-    tone === 'red'
-      ? 'border-siren-red/70'
-      : tone === 'love'
-        ? 'border-love/70'
-        : tone === 'gold'
-          ? 'border-gold/70'
-          : 'border-black'
   return (
-    <div className={`rounded-xl border-[3px] ${border} bg-con-800/90 p-3 shadow-[0_5px_0_rgba(0,0,0,.5)]`}>
-      <div className="txt-head text-[15px] tracking-widest text-tape">{title}</div>
-      {desc && <div className="mb-2 mt-0.5 text-[12px] font-normal leading-snug text-white/45">{desc}</div>}
-      {!desc && <div className="mb-2" />}
-      {children}
-    </div>
+    <section className={`ops-card${active ? ' is-active' : ''}`}>
+      {title && (
+        <header className="ops-card-head">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div className="ops-card-title">{title}</div>
+            {right}
+          </div>
+          {desc && <div className="ops-card-desc">{desc}</div>}
+        </header>
+      )}
+      <div className="ops-card-body">{children}</div>
+    </section>
   )
 }
 
-function B({
+function Fold({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="ops-card ops-details">
+      <summary>{title}</summary>
+      <div className="ops-card-body">{children}</div>
+    </details>
+  )
+}
+
+function Btn({
   children,
   onClick,
-  tone = 'steel',
+  kind = '',
+  size = '',
   disabled,
-  className = '',
-  small,
+  block,
 }: {
   children: React.ReactNode
   onClick?: () => void
-  tone?: 'red' | 'blue' | 'gold' | 'steel' | 'love' | 'green'
+  kind?: '' | 'primary' | 'success' | 'danger' | 'warn' | 'ghost' | 'on'
+  size?: '' | 'sm' | 'lg'
   disabled?: boolean
-  className?: string
-  small?: boolean
+  block?: boolean
 }) {
   return (
     <button
+      className={`ops-btn ${kind} ${size} ${block ? 'block' : ''}`}
       onClick={onClick}
       disabled={disabled}
-      className={`btn btn-${tone} ${small ? 'text-[13px] !py-2' : 'text-[16px]'} ${className}`}
     >
       {children}
     </button>
   )
 }
 
-/** 버튼 아래 붙는 한 줄 설명 */
-function Hint({ children }: { children: React.ReactNode }) {
-  return <div className="mt-1 text-center text-[11px] font-normal text-white/40">{children}</div>
+function Ladder({ config, state }: { config: Config; state: AppState }) {
+  const m = state.meta
+  return (
+    <div className="ops-ladder">
+      {config.prize.ladder.map((amt, i) => (
+        <div key={i} className={`ops-step ${i < m.cleared ? 'done' : i === m.cleared ? 'now' : ''}`}>
+          <div className="v">{amt}</div>
+          <div className="k">{i + 1}단</div>
+        </div>
+      ))}
+      <div className={`ops-step bonus ${state.prize.bonus > 0 ? 'done' : ''}`}>
+        <div className="v">{m.maxTotal}</div>
+        <div className="k">보너스</div>
+      </div>
+    </div>
+  )
 }
 
 // ══════════════════════════════════════════════════════════════
-// PIN 게이트
+// PIN
 // ══════════════════════════════════════════════════════════════
 
 function PinGate({ onSubmit, denied }: { onSubmit: (p: string) => void; denied: boolean }) {
   const [v, setV] = useState('')
   return (
-    <div className="tex-concrete flex min-h-full flex-col items-center justify-center p-6">
-      <div className="text-[64px]">🔒</div>
-      <div className="txt-head txt-glow-red mt-2 text-[30px]">교정본부 관제실</div>
-      <div className="txt-head mt-1 text-[14px] text-white/50">진행자 전용 · PIN 입력</div>
+    <div
+      className="ops"
+      style={{
+        display: 'flex',
+        minHeight: '100dvh',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div style={{ fontSize: 15, fontWeight: 700 }}>진행자 관제실</div>
+      <div style={{ marginTop: 4, fontSize: 13, color: 'var(--muted)' }}>PIN을 입력하세요</div>
 
       <input
         value={v}
         onChange={(e) => setV(e.target.value.replace(/\D/g, '').slice(0, 8))}
         inputMode="numeric"
         placeholder="••••"
-        className="txt-num mt-6 w-[220px] rounded-lg border-[4px] border-black bg-black/70 px-4 py-3 text-center text-[36px] tracking-[0.4em] text-tape outline-none focus:border-tape"
+        className="ops-input ops-num"
+        style={{
+          marginTop: 20,
+          width: 220,
+          textAlign: 'center',
+          fontSize: 30,
+          letterSpacing: '0.35em',
+          minHeight: 58,
+        }}
       />
       {denied && (
-        <div className="txt-head anim-blink mt-3 text-[15px] text-siren-red-lt">
-          ⚠️ PIN이 틀렸습니다
-        </div>
+        <div style={{ marginTop: 10, fontSize: 13, color: '#fca5a5' }}>PIN이 올바르지 않습니다</div>
       )}
-      <div className="mt-5 grid w-[260px] grid-cols-3 gap-2">
+
+      <div className="ops-grid c3" style={{ marginTop: 18, width: 260 }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '←'].map((k) => (
-          <B
+          <Btn
             key={k}
-            tone={k === 'C' ? 'red' : k === '←' ? 'blue' : 'steel'}
+            kind={k === 'C' || k === '←' ? 'ghost' : ''}
             onClick={() => {
               if (k === 'C') setV('')
               else if (k === '←') setV((s) => s.slice(0, -1))
@@ -114,12 +151,15 @@ function PinGate({ onSubmit, denied }: { onSubmit: (p: string) => void; denied: 
             }}
           >
             {k}
-          </B>
+          </Btn>
         ))}
       </div>
-      <B tone="gold" className="mt-4 w-[260px] !py-4 text-[20px]" onClick={() => onSubmit(v)}>
-        🚨 관제실 입장
-      </B>
+
+      <div style={{ width: 260, marginTop: 12 }}>
+        <Btn kind="primary" size="lg" block onClick={() => onSubmit(v)}>
+          입장
+        </Btn>
+      </div>
     </div>
   )
 }
@@ -128,53 +168,25 @@ function PinGate({ onSubmit, denied }: { onSubmit: (p: string) => void; denied: 
 // 게임별 컨트롤
 // ══════════════════════════════════════════════════════════════
 
-/** 모든 게임 상단에 공통으로 붙는 현재 상태 + 규칙 */
-function GameHeader({ gc, g, meta }: { gc: GameConfig; g: GameState; meta: AppState['meta'] }) {
-  return (
-    <div className="mb-3 rounded-lg border-2 border-tape/40 bg-black/50 p-2">
-      <div className="flex items-center justify-between">
-        <span className="txt-head text-[13px] text-tape">{gc.no}</span>
-        <span
-          className={`txt-head rounded border-2 px-2 text-[12px] ${
-            g.cleared
-              ? 'border-gold text-gold'
-              : g.failed
-                ? 'border-siren-red text-siren-red-lt'
-                : 'border-con-400 text-white/60'
-          }`}
-        >
-          {g.cleared ? '✅ 성공' : g.failed ? '❌ 실패' : '진행중'}
-        </span>
-      </div>
-      <div className="txt-head text-[18px] text-white">{gc.title}</div>
-      {gc.rule && (
-        <div className="mt-1 text-[12px] font-normal leading-snug text-white/50">{gc.rule}</div>
-      )}
-      {gc.win && (
-        <div className="mt-1 text-[12px] font-normal text-tape">✅ 성공 조건: {gc.win}</div>
-      )}
-      {!g.cleared && (
-        <div className="mt-1 text-[12px] font-normal text-cash">
-          이 게임 성공 시 보석금 {meta.next}
-          {meta.unit} 도달
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SimpleControl({ gc, g, d }: { gc: GameConfig; g: SimpleState; d: (a: any) => void }) {
+function SimpleControl({ g, d }: { g: SimpleState; d: (a: any) => void }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        <B tone="green" disabled={g.cleared} onClick={() => d({ type: 'game.clear' })}>
-          ✅ 집행 성공
-        </B>
-        <B tone="red" disabled={g.cleared || g.failed} onClick={() => d({ type: 'game.fail' })}>
-          ❌ 집행 실패
-        </B>
+      <div className="ops-grid c2">
+        <Btn kind="success" size="lg" disabled={g.cleared} onClick={() => d({ type: 'game.clear' })}>
+          성공
+        </Btn>
+        <Btn
+          kind="danger"
+          size="lg"
+          disabled={g.cleared || g.failed}
+          onClick={() => d({ type: 'game.fail' })}
+        >
+          실패
+        </Btn>
       </div>
-      <Hint>성공을 누르면 보석금이 다음 단계로 올라갑니다</Hint>
+      <div className="ops-hint" style={{ textAlign: 'center' }}>
+        성공을 누르면 보석금이 다음 단계로 올라갑니다
+      </div>
     </>
   )
 }
@@ -192,102 +204,99 @@ function CulpritControl({
 }) {
   const ev = (gc.evidences || [])[g.round % (gc.evidences?.length || 1)]
   const wins = g.results.filter((r) => r === 'win').length
+  const auto = g.guilty !== null && g.picked !== null ? g.guilty === g.picked : null
+
   return (
     <>
-      <div className="mb-2 flex items-center justify-between rounded-lg bg-black/50 px-2 py-1">
-        <span className="text-[13px] text-white/60">
-          ROUND {g.round + 1} / {g.results.length}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge accent">
+          라운드 {g.round + 1} / {g.results.length}
         </span>
-        <span className="text-[13px] text-tape">
-          적중 {wins} / {gc.clearThreshold ?? 1} 필요
+        <span className="ops-badge">
+          적중 {wins} · {gc.clearThreshold ?? 1}회면 성공
         </span>
       </div>
 
       {ev && (
-        <div className="mb-3 rounded-lg border-2 border-tape/50 bg-black/50 p-2 text-center">
-          <div className="text-[12px] text-white/50">이번 라운드 증거물</div>
-          <div className="txt-head text-[17px] text-tape">
-            {ev.emoji} {ev.real} vs {ev.fake}
+        <div className="ops-note">
+          이번 증거물 &nbsp;<b>{ev.emoji} {ev.real}</b> vs <b style={{ color: '#fca5a5' }}>{ev.fake}</b>
+        </div>
+      )}
+
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>
+          1. 벌칙 음식을 먹은 사람 <span className="ops-hint">— 나만 보임</span>
+        </div>
+        <div className="ops-grid c3">
+          {config.suspects.map((s) => (
+            <Btn
+              key={s.id}
+              kind={g.guilty === s.id ? 'warn' : ''}
+              onClick={() => d({ type: 'culprit.setGuilty', suspectId: s.id })}
+            >
+              {s.name}
+            </Btn>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>
+          2. {config.groom.name}이 지목한 사람 <span className="ops-hint">— TV에 표시됨</span>
+        </div>
+        <div className="ops-grid c3">
+          {config.suspects.map((s) => (
+            <Btn
+              key={s.id}
+              kind={g.picked === s.id ? 'primary' : ''}
+              disabled={g.revealed}
+              onClick={() => d({ type: 'culprit.pick', suspectId: s.id })}
+            >
+              {s.name}
+            </Btn>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>3. 판정</div>
+        {auto !== null && !g.revealed && (
+          <div className="ops-note" style={{ marginBottom: 8 }}>
+            선택한 값 기준 <b>{auto ? '적중' : '빗나감'}</b> 입니다
           </div>
-        </div>
-      )}
-
-      <div className="mb-1 text-[13px] text-white/60">① 벌칙 음식 먹은 사람 🔒 나만 보임</div>
-      <div className="mb-3 grid grid-cols-3 gap-2">
-        {config.suspects.map((s) => (
-          <B
-            key={s.id}
-            small
-            tone={g.guilty === s.id ? 'gold' : 'steel'}
-            onClick={() => d({ type: 'culprit.setGuilty', suspectId: s.id })}
+        )}
+        <div className="ops-grid c2">
+          <Btn
+            kind="success"
+            size="lg"
+            disabled={g.revealed || g.picked === null}
+            onClick={() => d({ type: 'culprit.judge', win: true })}
           >
-            {g.guilty === s.id ? '🩸 ' : ''}
-            {s.name}
-          </B>
-        ))}
-      </div>
-
-      <div className="mb-1 text-[13px] text-white/60">
-        ② {config.groom.name}이 지목한 사람 — TV에 조준선이 뜹니다
-      </div>
-      <div className="mb-3 grid grid-cols-3 gap-2">
-        {config.suspects.map((s) => (
-          <B
-            key={s.id}
-            small
-            tone={g.picked === s.id ? 'red' : 'steel'}
-            disabled={g.revealed}
-            onClick={() => d({ type: 'culprit.pick', suspectId: s.id })}
+            적중
+          </Btn>
+          <Btn
+            kind="danger"
+            size="lg"
+            disabled={g.revealed || g.picked === null}
+            onClick={() => d({ type: 'culprit.judge', win: false })}
           >
-            {g.picked === s.id ? '🎯 ' : ''}
-            {s.name}
-          </B>
-        ))}
-      </div>
-
-      <div className="mb-1 text-[13px] text-white/60">③ 판정</div>
-      {g.guilty !== null && g.picked !== null && !g.revealed && (
-        <div className="mb-2 rounded bg-tape/15 py-1 text-center text-[13px] text-tape">
-          자동 판정: {g.guilty === g.picked ? '⭕ 적중' : '❌ 빗나감'}
+            빗나감
+          </Btn>
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-2">
-        <B
-          tone="green"
-          disabled={g.revealed || g.picked === null}
-          onClick={() => d({ type: 'culprit.judge', win: true })}
-        >
-          ⭕ 적중!
-        </B>
-        <B
-          tone="red"
-          disabled={g.revealed || g.picked === null}
-          onClick={() => d({ type: 'culprit.judge', win: false })}
-        >
-          ❌ 빗나감
-        </B>
       </div>
-      <Hint>{gc.clearThreshold ?? 1}회 적중하면 자동으로 게임 성공 처리됩니다</Hint>
 
-      <B tone="blue" small className="mt-3 w-full" onClick={() => d({ type: 'culprit.next' })}>
-        ▶ 다음 라운드
-      </B>
-      <div className="mt-2 flex gap-2">
+      <Btn kind="primary" block onClick={() => d({ type: 'culprit.next' })}>
+        다음 라운드
+      </Btn>
+
+      <div className="ops-rounds">
         {g.results.map((r, i) => (
           <button
             key={i}
+            className={`ops-round ${r === 'win' ? 'win' : r === 'lose' ? 'lose' : i === g.round ? 'now' : ''}`}
             onClick={() => d({ type: 'culprit.setRound', round: i })}
-            className={`flex-1 rounded border-2 border-black py-1 text-[13px] ${
-              r === 'win'
-                ? 'bg-gold text-black'
-                : r === 'lose'
-                  ? 'bg-siren-red text-white'
-                  : i === g.round
-                    ? 'bg-tape text-black'
-                    : 'bg-con-700 text-white/60'
-            }`}
           >
-            R{i + 1}
+            {i + 1}
           </button>
         ))}
       </div>
@@ -298,105 +307,97 @@ function CulpritControl({
 function VoiceControl({ g, gc, d }: { g: VoiceState; gc: GameConfig; d: (a: any) => void }) {
   const maxL = gc.maxListens ?? 3
   const wins = g.results.filter((r) => r === 'win').length
+
   return (
     <>
-      <div className="mb-2 flex items-center justify-between rounded-lg bg-black/50 px-2 py-1">
-        <span className="text-[13px] text-white/60">
-          Q {g.round + 1} / {g.results.length}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge accent">
+          문제 {g.round + 1} / {g.results.length}
         </span>
-        <span className="text-[13px] text-tape">
-          정답 {wins} / {gc.clearThreshold ?? 3} 필요
+        <span className="ops-badge">
+          정답 {wins} · {gc.clearThreshold ?? 3}문제면 성공
         </span>
+        <span className="ops-badge">청취 {g.listensLeft} / {maxL}</span>
       </div>
 
-      <div className="mb-3 rounded-lg border-[3px] border-siren-red bg-siren-red/15 p-3 text-center">
-        <div className="txt-head text-[12px] tracking-widest text-siren-red-lt">
-          🔒 정답 — 나만 보임 (TV엔 글자 수만 표시)
-        </div>
-        <div className="txt-head mt-1 text-[34px] leading-none tracking-[0.15em] text-white">
-          {g.word || '(단어 미설정)'}
-        </div>
-        <div className="mt-1 text-[13px] text-white/50">{g.wordLength}글자</div>
+      <div className="ops-secret">
+        <div className="ops-secret-label">정답 · 나만 보임 (TV엔 글자 수만)</div>
+        <div className="ops-secret-value">{g.word || '단어 미설정'}</div>
+        <div className="ops-hint" style={{ marginTop: 4 }}>{g.wordLength}글자</div>
       </div>
 
-      <div className="mb-2 grid grid-cols-2 gap-2">
-        <B tone="gold" onClick={() => d({ type: 'voice.countdown' })}>
-          📣 발성 신호
-        </B>
-        <B tone="blue" disabled={g.listensLeft <= 0} onClick={() => d({ type: 'voice.useListen' })}>
-          🔊 청취 1회 차감 ({g.listensLeft})
-        </B>
+      <div className="ops-grid c2">
+        <Btn kind="warn" onClick={() => d({ type: 'voice.countdown' })}>
+          발성 신호
+        </Btn>
+        <Btn
+          kind="primary"
+          disabled={g.listensLeft <= 0}
+          onClick={() => d({ type: 'voice.useListen' })}
+        >
+          청취 1회 차감
+        </Btn>
       </div>
-      <Hint>발성 신호를 누르면 TV에 3-2-1 카운트다운이 뜹니다</Hint>
-
-      <div className="mb-3 mt-3 flex items-center gap-2">
-        <span className="text-[13px] text-white/60">청취 잔여 수정</span>
-        {Array.from({ length: maxL + 1 }).map((_, i) => (
-          <button
-            key={i}
-            onClick={() => d({ type: 'voice.setListens', value: i })}
-            className={`h-8 w-8 rounded-full border-2 border-black text-[13px] ${
-              g.listensLeft === i ? 'bg-tape text-black' : 'bg-con-700 text-white/60'
-            }`}
-          >
-            {i}
-          </button>
-        ))}
+      <div className="ops-hint" style={{ textAlign: 'center', marginTop: -4 }}>
+        발성 신호를 누르면 TV에 3-2-1 카운트다운이 뜹니다
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <B tone="green" disabled={g.revealed} onClick={() => d({ type: 'voice.judge', win: true })}>
-          ⭕ 정답!
-        </B>
-        <B tone="red" disabled={g.revealed} onClick={() => d({ type: 'voice.judge', win: false })}>
-          ❌ 오답
-        </B>
-      </div>
-      <Hint>{gc.clearThreshold ?? 3}문제 맞히면 자동으로 게임 성공 처리됩니다</Hint>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <B tone="steel" small onClick={() => d({ type: 'voice.reveal' })}>
-          👁 정답만 공개
-        </B>
-        <B tone="blue" small onClick={() => d({ type: 'voice.next' })}>
-          ▶ 다음 문제
-        </B>
+      <div className="ops-grid c2">
+        <Btn kind="success" size="lg" disabled={g.revealed} onClick={() => d({ type: 'voice.judge', win: true })}>
+          정답
+        </Btn>
+        <Btn kind="danger" size="lg" disabled={g.revealed} onClick={() => d({ type: 'voice.judge', win: false })}>
+          오답
+        </Btn>
       </div>
 
-      <div className="mt-2 flex gap-2">
+      <div className="ops-grid c2">
+        <Btn size="sm" onClick={() => d({ type: 'voice.reveal' })}>
+          정답만 공개
+        </Btn>
+        <Btn size="sm" kind="primary" onClick={() => d({ type: 'voice.next' })}>
+          다음 문제
+        </Btn>
+      </div>
+
+      <div className="ops-rounds">
         {g.results.map((r, i) => (
           <button
             key={i}
+            className={`ops-round ${r === 'win' ? 'win' : r === 'lose' ? 'lose' : i === g.round ? 'now' : ''}`}
             onClick={() => d({ type: 'voice.setRound', round: i })}
-            className={`flex-1 rounded border-2 border-black py-1 text-[13px] ${
-              r === 'win'
-                ? 'bg-gold text-black'
-                : r === 'lose'
-                  ? 'bg-siren-red text-white'
-                  : i === g.round
-                    ? 'bg-tape text-black'
-                    : 'bg-con-700 text-white/60'
-            }`}
           >
-            Q{i + 1}
+            {i + 1}
           </button>
         ))}
       </div>
 
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>청취 잔여 직접 수정</div>
+        <div className="ops-grid c4">
+          {Array.from({ length: maxL + 1 }).map((_, i) => (
+            <Btn
+              key={i}
+              size="sm"
+              kind={g.listensLeft === i ? 'on' : 'ghost'}
+              onClick={() => d({ type: 'voice.setListens', value: i })}
+            >
+              {i}
+            </Btn>
+          ))}
+        </div>
+      </div>
+
       {g.allWords && (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-[13px] text-white/50">
-            전체 단어 목록 보기 🔒
-          </summary>
-          <div className="mt-2 space-y-1">
+        <details className="ops-details">
+          <summary style={{ padding: '8px 0' }}>전체 단어 목록</summary>
+          <div className="ops-list" style={{ marginTop: 8 }}>
             {g.allWords.map((w, i) => (
-              <div
-                key={i}
-                className={`rounded border-2 border-black px-2 py-1 text-[14px] ${
-                  i === g.round ? 'bg-tape/20 text-tape' : 'bg-black/40 text-white/70'
-                }`}
-              >
-                Q{i + 1}. {w}
+              <div key={i} className="ops-row">
+                <span style={{ color: i === g.round ? '#bfdbfe' : 'var(--muted)' }}>
+                  {i + 1}. {w}
+                </span>
+                {i === g.round && <span className="ops-badge accent">현재</span>}
               </div>
             ))}
           </div>
@@ -408,13 +409,11 @@ function VoiceControl({ g, gc, d }: { g: VoiceState; gc: GameConfig; d: (a: any)
 
 function BonusControl({
   g,
-  gc,
   config,
   state,
   d,
 }: {
   g: BonusState
-  gc: GameConfig
   config: Config
   state: AppState
   d: (a: any) => void
@@ -422,76 +421,78 @@ function BonusControl({
   const failed = config.games.filter((x) => !x.bonus && state.games[x.id]?.failed)
   const step = config.prize.bonusStep ?? 10
   const room = Math.max(0, state.meta.maxTotal - state.prize.earned)
+  const amounts = [step, step * 2, room].filter((v, i, a) => v > 0 && a.indexOf(v) === i)
 
   return (
     <>
-      <div className="mb-2 rounded-lg border-2 border-love/60 bg-love/10 p-2">
-        <div className="text-[12px] text-love-lt">
-          질문 {g.round + 1} / {g.results.length} — TV에 표시됨
-        </div>
-        <div className="txt-head text-[17px] leading-snug text-white">
-          {g.question || '(질문 미입력)'}
-        </div>
-      </div>
-      <div className="mb-3 rounded-lg border-[3px] border-siren-red bg-siren-red/15 p-2">
-        <div className="text-[12px] text-siren-red-lt">
-          🔒 {config.bride.name} 님 답변 — 나만 보임
-        </div>
-        <div className="txt-head text-[20px] leading-snug text-white">
-          {g.answer || '(답변 미입력 — 설정에서 입력)'}
-        </div>
+      <span className="ops-badge accent">
+        질문 {g.round + 1} / {g.results.length}
+      </span>
+
+      <div className="ops-note">
+        <div className="ops-hint" style={{ marginBottom: 3 }}>질문 — TV에 표시됨</div>
+        <b style={{ fontSize: 15 }}>{g.question || '질문 미입력'}</b>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <B tone="green" onClick={() => d({ type: 'bonus.judge', win: true })}>
-          ⭕ 정답!
-        </B>
-        <B tone="red" onClick={() => d({ type: 'bonus.judge', win: false })}>
-          ❌ 오답
-        </B>
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <B tone="love" small onClick={() => d({ type: 'bonus.reveal' })}>
-          💌 답변만 공개
-        </B>
-        <B tone="blue" small onClick={() => d({ type: 'bonus.next' })}>
-          ▶ 다음 질문
-        </B>
+      <div className="ops-secret">
+        <div className="ops-secret-label">{config.bride.name} 님 답변 · 나만 보임</div>
+        <div className="ops-secret-value" style={{ fontSize: 20 }}>
+          {g.answer || '답변 미입력 — 설정에서 입력하세요'}
+        </div>
       </div>
 
-      <div className="mt-4 border-t-2 border-white/10 pt-3">
-        <div className="txt-head text-[14px] text-tape">🎁 정답 보상 — 둘 중 하나 선택</div>
+      <div className="ops-grid c2">
+        <Btn kind="success" size="lg" onClick={() => d({ type: 'bonus.judge', win: true })}>
+          정답
+        </Btn>
+        <Btn kind="danger" size="lg" onClick={() => d({ type: 'bonus.judge', win: false })}>
+          오답
+        </Btn>
+      </div>
 
-        <div className="mt-2 text-[12px] text-white/50">① 실패한 집행을 되살리기</div>
-        <div className="mt-1 grid gap-2">
-          {failed.length === 0 && (
-            <div className="rounded bg-black/40 py-2 text-center text-[13px] text-white/30">
-              현재 실패한 집행 없음
-            </div>
-          )}
-          {failed.map((x) => (
-            <B key={x.id} tone="gold" small onClick={() => d({ type: 'revive.grant', gameId: x.id })}>
-              ↩ {x.no} · {x.title} 재도전
-            </B>
-          ))}
-        </div>
+      <div className="ops-grid c2">
+        <Btn size="sm" onClick={() => d({ type: 'bonus.reveal' })}>
+          답변만 공개
+        </Btn>
+        <Btn size="sm" kind="primary" onClick={() => d({ type: 'bonus.next' })}>
+          다음 질문
+        </Btn>
+      </div>
 
-        <div className="mt-3 text-[12px] text-white/50">
-          ② 보너스 상금 지급 (최대치까지 {room}
-          {state.meta.unit} 남음)
+      <div className="ops-divider" />
+
+      <div className="ops-sub">정답 보상 — 둘 중 하나 선택</div>
+
+      <div>
+        <div className="ops-hint" style={{ marginBottom: 6 }}>1. 실패한 집행 되살리기</div>
+        {failed.length === 0 ? (
+          <div className="ops-note">현재 실패한 집행이 없습니다</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 8 }}>
+            {failed.map((x) => (
+              <Btn key={x.id} kind="warn" onClick={() => d({ type: 'revive.grant', gameId: x.id })}>
+                {x.no} · {x.title} 재도전
+              </Btn>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="ops-hint" style={{ marginBottom: 6 }}>
+          2. 보너스 상금 지급 — 최대치까지 {room}
+          {state.meta.unit} 남음
         </div>
-        <div className="mt-1 grid grid-cols-3 gap-2">
-          {[step, step * 2, room].filter((v, i, a) => v > 0 && a.indexOf(v) === i).map((v) => (
-            <B
+        <div className="ops-grid c3">
+          {amounts.map((v) => (
+            <Btn
               key={v}
-              tone="love"
-              small
               disabled={room <= 0}
               onClick={() => d({ type: 'prize.bonus', amount: v, label: '천생연분 보너스' })}
             >
               +{v}
               {state.meta.unit}
-            </B>
+            </Btn>
           ))}
         </div>
       </div>
@@ -536,9 +537,11 @@ export default function Controller() {
 
   if (!state || !config) {
     return (
-      <div className="tex-concrete flex min-h-full flex-col items-center justify-center">
-        <div className="anim-blink text-[50px]">🚨</div>
-        <div className="txt-head mt-2 text-[18px] text-tape">관제실 접속 중...</div>
+      <div
+        className="ops"
+        style={{ display: 'flex', minHeight: '100dvh', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <div style={{ color: 'var(--muted)', fontSize: 14 }}>접속 중…</div>
       </div>
     )
   }
@@ -546,260 +549,275 @@ export default function Controller() {
   const d = dispatch
   const m = state.meta
   const gc = state.activeGameId ? config.games.find((g) => g.id === state.activeGameId) : null
-  const g = state.activeGameId ? state.games[state.activeGameId] : null
+  const g: GameState | null = state.activeGameId ? state.games[state.activeGameId] : null
   const pct = m.maxTotal > 0 ? (state.prize.earned / m.maxTotal) * 100 : 0
   const mains = config.games.filter((x) => !x.bonus)
   const bonuses = config.games.filter((x) => x.bonus)
+  const remain = Math.max(0, m.next - state.prize.earned)
+
+  const screenBtn = (label: string, phase: string, gameId?: string) => {
+    const on = gameId ? state.activeGameId === gameId : state.phase === phase && !state.activeGameId
+    return (
+      <Btn
+        key={label}
+        size="sm"
+        kind={on ? 'on' : 'ghost'}
+        onClick={() => d({ type: 'goto', phase, gameId })}
+      >
+        {label}
+      </Btn>
+    )
+  }
 
   return (
-    <div className="tex-concrete min-h-full pb-24">
-      {/* 상단 고정 */}
-      <div className="sticky top-0 z-40 border-b-[3px] border-black bg-black/95 px-3 py-2 backdrop-blur">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className={`led ${status === 'open' ? 'bg-cash text-cash' : 'anim-blink bg-siren-red text-siren-red'}`}
-            />
-            <span className="txt-head text-[13px] text-white/70">
-              {status === 'open' ? '연결됨' : '재접속 중'}
-            </span>
+    <div className="ops">
+      {/* 상단 상태 */}
+      <div className="ops-bar">
+        <div className="ops-bar-inner">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span className={`ops-dot ${status === 'open' ? 'ok' : 'bad'}`} />
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                {status === 'open' ? '연결됨' : '재접속 중'}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--faint)' }}>
+              TV {conn.tv} · 폰 {conn.spectator} · 진행자 {conn.control}
+            </div>
           </div>
-          <div className="txt-head text-[12px] text-white/45">
-            📺 {conn.tv} · 📱 {conn.spectator} · 🎛 {conn.control}
-          </div>
-        </div>
 
-        <div className="mt-1 flex items-end justify-between">
-          <div className="txt-num txt-gold-plate text-[30px] leading-none">
-            {state.prize.earned}
-            <span className="text-[14px]">{m.unit}</span>
-          </div>
-          <div className="txt-head text-[12px] text-white/45">
-            집행 {m.cleared}/{m.totalGames} · 최대 {m.maxTotal}
-            {m.unit}
-          </div>
-        </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full border-2 border-black bg-con-800">
           <div
-            className="h-full transition-[width] duration-700"
             style={{
-              width: `${Math.min(100, pct)}%`,
-              background: 'linear-gradient(90deg,#b8860b,#ffc72c,#fff3c4)',
+              marginTop: 6,
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
             }}
-          />
-        </div>
-        <div className="mt-2 flex justify-center">
-          <PrizeLadder
-            ladder={config.prize.ladder}
-            cleared={m.cleared}
-            unit={m.unit}
-            maxTotal={m.maxTotal}
-            bonus={state.prize.bonus}
-            size="sm"
-          />
+          >
+            <div className="ops-num" style={{ fontSize: 30, fontWeight: 700, lineHeight: 1 }}>
+              {state.prize.earned}
+              <span style={{ fontSize: 14, color: 'var(--muted)', marginLeft: 2 }}>{m.unit}</span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+              집행 {m.cleared}/{m.totalGames}
+              {remain > 0 && ` · 다음까지 ${remain}${m.unit}`}
+            </div>
+          </div>
+
+          <div className="ops-progress" style={{ marginTop: 6 }}>
+            <div style={{ width: `${Math.min(100, pct)}%` }} />
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <Ladder config={config} state={state} />
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3 p-3">
-        {/* 진행 순서 안내 */}
-        <div className="rounded-xl border-[3px] border-tape/50 bg-tape/10 p-3">
-          <div className="txt-head text-[14px] text-tape">📖 진행 순서</div>
-          <div className="mt-1 text-[12px] font-normal leading-relaxed text-white/60">
-            ① 아래 <b className="text-white">TV 화면 바꾸기</b>에서 게임 선택 →
-            ② 게임 진행하며 <b className="text-white">판정</b> →
-            ③ 성공하면 보석금이 <b className="text-tape">다음 단계</b>로 자동 상승 →
-            ④ 실패하면 <b className="text-love-lt">천생연분</b>으로 부활
-          </div>
-        </div>
-
+      <div className="ops-page">
         {/* 화면 전환 */}
-        <Section title="📺 TV 화면 바꾸기" desc="누르면 TV와 친구들 폰 화면이 즉시 바뀝니다">
-          <div className="grid grid-cols-3 gap-2">
-            <B
-              small
-              tone={state.phase === 'intro' ? 'gold' : 'steel'}
-              onClick={() => d({ type: 'goto', phase: 'intro' })}
-            >
-              🚨 인트로
-            </B>
-            <B
-              small
-              tone={state.phase === 'dashboard' ? 'gold' : 'steel'}
-              onClick={() => d({ type: 'goto', phase: 'dashboard' })}
-            >
-              🏛 상금 현황
-            </B>
-            <B
-              small
-              tone={state.phase === 'mugshot' ? 'gold' : 'steel'}
-              onClick={() => d({ type: 'goto', phase: 'mugshot' })}
-            >
-              📸 머그샷
-            </B>
+        <Card title="TV 화면" desc="누르면 TV와 친구들 폰이 즉시 바뀝니다">
+          <div className="ops-grid c4">
+            {screenBtn('인트로', 'intro')}
+            {screenBtn('상금 현황', 'dashboard')}
+            {screenBtn('머그샷', 'mugshot')}
+            {screenBtn('증명서', 'certificate')}
           </div>
 
-          <div className="mt-2 grid gap-2">
+          <div className="ops-divider" />
+
+          <div style={{ display: 'grid', gap: 8 }}>
             {mains.map((x, i) => {
               const s = state.games[x.id]
+              const on = state.activeGameId === x.id
               return (
-                <B
+                <button
                   key={x.id}
-                  small
-                  tone={state.activeGameId === x.id ? 'red' : 'blue'}
+                  className={`ops-btn ${on ? 'on' : 'ghost'}`}
+                  style={{ justifyContent: 'space-between', textAlign: 'left' }}
                   onClick={() => d({ type: 'goto', phase: 'game', gameId: x.id })}
                 >
-                  {s?.cleared ? '✅' : s?.failed ? '❌' : `${i + 1}️⃣`} {x.no} · {x.title}
-                  <span className="ml-1 text-[11px] opacity-70">
-                    → {config.prize.ladder[i] ?? ''}
-                    {m.unit}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span className="ops-num" style={{ color: 'var(--faint)', fontSize: 13 }}>
+                      {i + 1}
+                    </span>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {x.title}
+                    </span>
                   </span>
-                </B>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+                    <span className="ops-hint">
+                      {config.prize.ladder[i] ?? ''}
+                      {m.unit}
+                    </span>
+                    {s?.cleared ? (
+                      <span className="ops-badge success">성공</span>
+                    ) : s?.failed ? (
+                      <span className="ops-badge danger">실패</span>
+                    ) : null}
+                  </span>
+                </button>
               )
             })}
-          </div>
 
-          <div className="mt-2 grid gap-2">
             {bonuses.map((x) => (
-              <B
+              <button
                 key={x.id}
-                small
-                tone={state.activeGameId === x.id ? 'red' : 'love'}
+                className={`ops-btn ${state.activeGameId === x.id ? 'on' : 'ghost'}`}
+                style={{ justifyContent: 'space-between', textAlign: 'left' }}
                 onClick={() => d({ type: 'goto', phase: 'game', gameId: x.id })}
               >
-                💗 {x.no} · {x.title}
-              </B>
+                <span>{x.title}</span>
+                <span className="ops-hint">부활 전용</span>
+              </button>
             ))}
           </div>
-
-          <B
-            small
-            tone={state.phase === 'certificate' ? 'gold' : 'steel'}
-            className="mt-2 w-full"
-            onClick={() => d({ type: 'goto', phase: 'certificate' })}
-          >
-            📜 출소 증명서 (최종 발표)
-          </B>
-        </Section>
+        </Card>
 
         {/* 현재 게임 */}
         {gc && g ? (
-          <Section title="🎮 현재 게임 진행" tone={gc.bonus ? 'love' : 'red'}>
-            <GameHeader gc={gc} g={g} meta={m} />
+          <Card
+            active
+            title={`${gc.no} · ${gc.title}`}
+            desc={gc.rule}
+            right={
+              g.cleared ? (
+                <span className="ops-badge success">성공</span>
+              ) : g.failed ? (
+                <span className="ops-badge danger">실패</span>
+              ) : (
+                <span className="ops-badge">진행중</span>
+              )
+            }
+          >
+            {gc.win && (
+              <div className="ops-note">
+                성공 조건 <b>{gc.win}</b>
+                {!g.cleared && (
+                  <>
+                    <br />
+                    성공 시 보석금{' '}
+                    <b style={{ color: '#ffc72c' }}>
+                      {m.next}
+                      {m.unit}
+                    </b>{' '}
+                    도달
+                  </>
+                )}
+              </div>
+            )}
+
             {gc.type === 'culprit' && (
               <CulpritControl g={g as CulpritState} gc={gc} config={config} d={d} />
             )}
             {gc.type === 'voice' && <VoiceControl g={g as VoiceState} gc={gc} d={d} />}
             {gc.type === 'bonus' && (
-              <BonusControl g={g as BonusState} gc={gc} config={config} state={state} d={d} />
+              <BonusControl g={g as BonusState} config={config} state={state} d={d} />
             )}
-            {gc.type === 'simple' && <SimpleControl g={g as SimpleState} gc={gc} d={d} />}
+            {gc.type === 'simple' && <SimpleControl g={g as SimpleState} d={d} />}
 
-            {/* 강제 판정 */}
-            <details className="mt-4">
-              <summary className="cursor-pointer text-[12px] text-white/40">
-                이 게임 강제로 성공/실패 처리하기
-              </summary>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                <B small tone="green" onClick={() => d({ type: 'game.clear' })}>
-                  강제 성공
-                </B>
-                <B small tone="red" onClick={() => d({ type: 'game.fail' })}>
-                  강제 실패
-                </B>
-                <B small tone="steel" onClick={() => d({ type: 'game.reset' })}>
-                  처음부터
-                </B>
+            <details className="ops-details">
+              <summary style={{ padding: '8px 0' }}>강제 판정 · 초기화</summary>
+              <div style={{ marginTop: 8 }}>
+                <div className="ops-grid c3">
+                  <Btn size="sm" kind="success" onClick={() => d({ type: 'game.clear' })}>
+                    강제 성공
+                  </Btn>
+                  <Btn size="sm" kind="danger" onClick={() => d({ type: 'game.fail' })}>
+                    강제 실패
+                  </Btn>
+                  <Btn size="sm" kind="ghost" onClick={() => d({ type: 'game.reset' })}>
+                    처음부터
+                  </Btn>
+                </div>
+                <div className="ops-hint" style={{ marginTop: 6 }}>
+                  판정이 꼬였을 때만 사용하세요
+                </div>
               </div>
-              <Hint>판정이 꼬였을 때만 사용하세요</Hint>
             </details>
-          </Section>
+          </Card>
         ) : (
-          <Section title="🎮 현재 게임 진행" desc="위에서 게임을 선택하면 조작 버튼이 나타납니다">
-            <div className="py-4 text-center text-[14px] text-white/30">선택된 게임 없음</div>
-          </Section>
+          <Card title="현재 게임">
+            <div className="ops-note">위에서 게임을 선택하면 조작 버튼이 나타납니다</div>
+          </Card>
         )}
 
-        {/* 실수 되돌리기 */}
-        <Section
-          title="↩️ 실수 되돌리기"
-          desc="방금 누른 판정을 취소하고 직전 상태로 되돌립니다. 잘못 눌렀을 때 쓰세요."
-          tone="gold"
-        >
-          <B tone="gold" className="w-full !py-4 text-[18px]" onClick={() => d({ type: 'undo' })}>
-            ↩️ 방금 누른 거 취소
-          </B>
-        </Section>
-
-        {/* TV 공지 */}
-        <Section title="📢 TV에 문구 띄우기" desc="TV 화면 위에 큰 빨간 배너로 표시됩니다">
-          <div className="flex gap-2">
+        {/* 부가 기능 */}
+        <Fold title="TV에 문구 띄우기">
+          <div style={{ display: 'flex', gap: 8 }}>
             <input
+              className="ops-input"
               value={banner}
               onChange={(e) => setBanner(e.target.value)}
-              placeholder="띄울 문구 입력"
-              className="w-full rounded-lg border-[3px] border-black bg-black/60 px-3 py-2 text-[15px] text-white outline-none focus:border-tape"
+              placeholder="띄울 문구"
             />
-            <B small tone="gold" onClick={() => d({ type: 'banner', text: banner })}>
-              송출
-            </B>
-            <B
-              small
-              tone="steel"
+            <Btn onClick={() => d({ type: 'banner', text: banner })}>표시</Btn>
+            <Btn
+              kind="ghost"
               onClick={() => {
                 setBanner('')
                 d({ type: 'banner', text: '' })
               }}
             >
               끄기
-            </B>
+            </Btn>
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="ops-grid c2">
             {['벌칙 집행!', '한 번 더!', '역전 찬스!', '조용히!!'].map((t) => (
-              <B key={t} small tone="steel" onClick={() => d({ type: 'banner', text: t })}>
+              <Btn key={t} size="sm" kind="ghost" onClick={() => d({ type: 'banner', text: t })}>
                 {t}
-              </B>
+              </Btn>
             ))}
           </div>
-        </Section>
+        </Fold>
 
-        {/* 연출 */}
-        <Section title="🎆 효과 수동 재생" desc="분위기 띄울 때. 게임 결과에는 영향 없습니다">
-          <div className="grid grid-cols-3 gap-2">
+        <Fold title="효과 수동 재생">
+          <div className="ops-grid c3">
             {(
               [
-                ['💵 지폐비', { kind: 'cash' }],
-                ['🚨 사이렌', { kind: 'siren' }],
-                ['💥 실패음', { kind: 'fail' }],
-                ['💗 하트', { kind: 'love-win' }],
-                ['🔢 카운트다운', { kind: 'countdown' }],
-                ['🖃 유죄 도장', { kind: 'stamp', payload: { text: '유 죄', tone: 'red' } }],
+                ['지폐비', { kind: 'cash' }],
+                ['사이렌', { kind: 'siren' }],
+                ['실패음', { kind: 'fail' }],
+                ['하트', { kind: 'love-win' }],
+                ['카운트다운', { kind: 'countdown' }],
+                ['유죄 도장', { kind: 'stamp', payload: { text: '유 죄', tone: 'red' } }],
               ] as [string, any][]
             ).map(([label, a]) => (
-              <B
+              <Btn
                 key={label}
-                small
-                tone="steel"
+                size="sm"
+                kind="ghost"
                 onClick={() => d({ type: 'fx', kind: a.kind, payload: a.payload })}
               >
                 {label}
-              </B>
+              </Btn>
             ))}
           </div>
-        </Section>
+          <div className="ops-hint">게임 결과에는 영향이 없습니다</div>
+        </Fold>
 
-        {/* 기록 */}
-        <Section title="📋 진행 기록">
-          <div className="max-h-56 space-y-1 overflow-y-auto">
-            {state.log.length === 0 && <div className="text-[13px] text-white/30">없음</div>}
-            {state.log.slice(0, 15).map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between rounded border-2 border-black bg-black/40 px-2 py-1"
-              >
-                <span className="truncate text-[13px] text-white/75">{l.label}</span>
+        <Fold title="진행 기록">
+          <div className="ops-list">
+            {state.log.length === 0 && <div className="ops-hint">기록 없음</div>}
+            {state.log.slice(0, 20).map((l) => (
+              <div key={l.id} className="ops-row">
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {l.label}
+                </span>
                 {l.delta !== 0 && (
                   <span
-                    className={`txt-num shrink-0 text-[17px] ${l.delta > 0 ? 'text-cash' : 'text-siren-red-lt'}`}
+                    className="ops-num"
+                    style={{
+                      flex: 'none',
+                      fontWeight: 700,
+                      color: l.delta > 0 ? '#86efac' : '#fca5a5',
+                    }}
                   >
                     {l.delta > 0 ? '+' : ''}
                     {l.delta}
@@ -808,22 +826,30 @@ export default function Controller() {
               </div>
             ))}
           </div>
-        </Section>
+        </Fold>
 
-        {/* 설정 / 초기화 */}
-        <div className="grid grid-cols-2 gap-2">
-          <a href="/admin" className="btn btn-steel block text-center text-[15px] no-underline">
-            ⚙️ 설정 열기
+        <div className="ops-grid c2">
+          <a className="ops-btn ghost" href="/admin">
+            설정
           </a>
-          <B
-            tone="red"
+          <Btn
+            kind="ghost"
             onClick={() => {
               if (confirm('게임 진행과 보석금을 전부 처음 상태로 되돌립니다. 진행할까요?'))
                 d({ type: 'prize.reset' })
             }}
           >
-            🗑 전체 초기화
-          </B>
+            전체 초기화
+          </Btn>
+        </div>
+      </div>
+
+      {/* 하단 고정 — 되돌리기는 항상 손 닿는 곳에 */}
+      <div className="ops-footbar">
+        <div className="ops-footbar-inner">
+          <Btn kind="warn" size="lg" block onClick={() => d({ type: 'undo' })}>
+            방금 누른 거 되돌리기
+          </Btn>
         </div>
       </div>
     </div>
