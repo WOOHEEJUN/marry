@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# 런타임 게임 상태 (서버에서 자동 생성)
+state.json
+
+# 로컬 설정 덮어쓰기 (실제 정답/PIN 은 서버 /admin 에서만 관리)
+config.local.json
+
+# 에디터 / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

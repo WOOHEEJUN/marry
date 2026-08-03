@@ -1,0 +1,825 @@
+@import 'tailwindcss';
+
+/* ══════════════════════════════════════════════════════════════
+   🚨 총각 검거 작전 — 디자인 시스템
+   컨셉: 긴급속보(경찰) + 교정본부(감옥)
+   원칙: 절제 금지. 과한 게 정답.
+   ══════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── 경광등 / 폴리스 ── */
+  --color-siren-red: #e10600;
+  --color-siren-red-lt: #ff3b30;
+  --color-siren-blue: #0047ff;
+  --color-siren-blue-lt: #3d7bff;
+  --color-tape: #ffd400;
+  --color-tape-dk: #c9a600;
+
+  /* ── 콘크리트 / 금속 ── */
+  --color-con-900: #0a0a0a;
+  --color-con-800: #141414;
+  --color-con-700: #1e1e1e;
+  --color-con-600: #2b2b2b;
+  --color-con-500: #3a3a3a;
+  --color-con-400: #565656;
+  --color-con-300: #7d7d7d;
+  --color-steel: #b9c0c7;
+  --color-steel-lt: #e8edf2;
+
+  /* ── 상금 / 금 ── */
+  --color-gold: #ffc72c;
+  --color-gold-dk: #b8860b;
+  --color-cash: #4ade80;
+
+  /* ── 천생연분(반전 톤) ── */
+  --color-love: #ff3e9d;
+  --color-love-lt: #ff8ac4;
+
+  /* ── 폰트 ── */
+  --font-head: 'Black Han Sans', 'Noto Sans KR', sans-serif;
+  --font-body: 'Noto Sans KR', sans-serif;
+  --font-num: 'Bebas Neue', 'Noto Sans KR', sans-serif;
+  --font-cert: 'Nanum Myeongjo', serif;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #050505;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  /* 기본은 스크롤 없음. 스크롤바가 생겼다 사라지며 화면이 좌우로 흔들리는 것 방지 */
+  overflow: hidden;
+}
+
+/* 스크롤이 필요한 화면만 열어준다 (폰 관전 / 컨트롤러 / 어드민) */
+body[data-scroll='on'] {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+/* TV 화면은 마우스 커서도 숨김 */
+body[data-role='tv'] {
+  overflow: hidden;
+  cursor: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #565656, #2b2b2b);
+  border-radius: 99px;
+  border: 2px solid #0a0a0a;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TEXTURE — 콘크리트 / 노이즈 / 스캔라인 / 비네트
+   ══════════════════════════════════════════════════════════════ */
+
+.tex-concrete {
+  background-color: #191919;
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(120, 120, 120, 0.14), transparent 55%),
+    radial-gradient(ellipse at 85% 80%, rgba(90, 90, 90, 0.12), transparent 50%),
+    repeating-linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.014) 0 2px,
+      transparent 2px 7px
+    ),
+    repeating-linear-gradient(
+      -25deg,
+      rgba(0, 0, 0, 0.28) 0 3px,
+      transparent 3px 11px
+    ),
+    linear-gradient(160deg, #262626, #101010 60%, #050505);
+}
+
+.tex-steel {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.075) 0 1px,
+      rgba(0, 0, 0, 0.16) 1px 3px,
+      transparent 3px 6px
+    ),
+    linear-gradient(180deg, #4a5158 0%, #2c3238 18%, #191d21 52%, #2c3238 84%, #454c53 100%);
+}
+
+.tex-plate {
+  background-image: linear-gradient(
+    180deg,
+    #3d444b 0%,
+    #23282d 12%,
+    #12161a 50%,
+    #23282d 88%,
+    #3d444b 100%
+  );
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.7),
+    0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+/* 종이(수배 전단) */
+.tex-paper {
+  background-color: #e9e0c8;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(150, 120, 60, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 72%, rgba(120, 95, 45, 0.2), transparent 32%),
+    repeating-linear-gradient(
+      88deg,
+      rgba(140, 110, 60, 0.05) 0 2px,
+      transparent 2px 6px
+    );
+  color: #1d1408;
+}
+
+/* 필름 노이즈 */
+.tex-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: noise-shift 0.45s steps(3) infinite;
+}
+@keyframes noise-shift {
+  0% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-3%, 2%);
+  }
+  66% {
+    transform: translate(2%, -3%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* CRT 스캔라인 */
+.tex-scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.32) 0 1px,
+    transparent 1px 3px
+  );
+  opacity: 0.5;
+}
+
+/* 비네트 */
+.tex-vignette::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 39;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 42%,
+    rgba(0, 0, 0, 0.55) 82%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   POLICE TAPE — 폴리스라인 테이프
+   ══════════════════════════════════════════════════════════════ */
+
+.tape-strip {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-tape) 0 22px,
+    #f5cc00 22px 44px
+  );
+  border-top: 3px solid #1a1a1a;
+  border-bottom: 3px solid #1a1a1a;
+  box-shadow:
+    0 0 26px rgba(255, 212, 0, 0.5),
+    inset 0 0 22px rgba(0, 0, 0, 0.35);
+}
+
+.tape-text {
+  font-family: var(--font-head);
+  color: #141414;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TEXT FX — 외곽선 / 네온 / 금속 / 크롬
+   ══════════════════════════════════════════════════════════════ */
+
+.txt-head {
+  font-family: var(--font-head);
+  letter-spacing: -0.01em;
+  line-height: 0.98;
+}
+
+.txt-num {
+  font-family: var(--font-num);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.txt-outline {
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
+}
+.txt-outline-thin {
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+}
+
+.txt-glow-red {
+  color: #fff;
+  text-shadow:
+    0 0 6px #ff2d20,
+    0 0 18px #e10600,
+    0 0 42px #e10600,
+    0 4px 0 #6b0000,
+    0 7px 14px rgba(0, 0, 0, 0.85);
+}
+
+.txt-glow-blue {
+  color: #fff;
+  text-shadow:
+    0 0 6px #4d86ff,
+    0 0 18px #0047ff,
+    0 0 42px #0047ff,
+    0 4px 0 #001f6b,
+    0 7px 14px rgba(0, 0, 0, 0.85);
+}
+
+.txt-glow-gold {
+  color: #fff6d5;
+  text-shadow:
+    0 0 6px #ffd75e,
+    0 0 20px #ffc72c,
+    0 0 48px #ff9d00,
+    0 4px 0 #7a4d00,
+    0 8px 16px rgba(0, 0, 0, 0.8);
+}
+
+.txt-glow-love {
+  color: #fff;
+  text-shadow:
+    0 0 6px #ff8ac4,
+    0 0 20px #ff3e9d,
+    0 0 46px #ff3e9d,
+    0 4px 0 #8a0044,
+    0 8px 16px rgba(0, 0, 0, 0.7);
+}
+
+.txt-chrome {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #cfd6dd 26%,
+    #7c858e 48%,
+    #eef3f8 54%,
+    #b3bcc4 72%,
+    #6b747c 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7));
+}
+
+.txt-gold-plate {
+  background: linear-gradient(
+    180deg,
+    #fff3c4 0%,
+    #ffd75e 22%,
+    #b8860b 48%,
+    #ffe9a8 56%,
+    #ffc72c 74%,
+    #8a6508 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.8)) drop-shadow(0 0 18px rgba(255, 199, 44, 0.5));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════════════════════════ */
+
+/* 경광등: 빨강↔파랑 */
+@keyframes siren-sweep {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.06;
+  }
+}
+.anim-siren-r {
+  animation: siren-sweep 0.72s steps(1) infinite;
+}
+.anim-siren-b {
+  animation: siren-sweep 0.72s steps(1) infinite 0.36s;
+}
+
+/* 전체 화면 붉은 명멸 */
+@keyframes alarm-flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.anim-alarm {
+  animation: alarm-flash 0.8s ease-in-out infinite;
+}
+
+/* 흔들림 */
+@keyframes shake-hard {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-5px, 3px) rotate(-0.7deg);
+  }
+  40% {
+    transform: translate(5px, -3px) rotate(0.7deg);
+  }
+  60% {
+    transform: translate(-4px, -2px) rotate(-0.5deg);
+  }
+  80% {
+    transform: translate(4px, 2px) rotate(0.5deg);
+  }
+}
+.anim-shake {
+  animation: shake-hard 0.42s ease-in-out;
+}
+.anim-shake-loop {
+  animation: shake-hard 2.6s ease-in-out infinite;
+}
+
+/* 깜빡임 */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.12;
+  }
+}
+.anim-blink {
+  animation: blink 0.62s steps(1) infinite;
+}
+.anim-blink-fast {
+  animation: blink 0.26s steps(1) infinite;
+}
+
+/* 형광등 플리커 */
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  3% {
+    opacity: 0.35;
+  }
+  6% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.5;
+  }
+  11% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 1;
+  }
+  64% {
+    opacity: 0.25;
+  }
+  66% {
+    opacity: 1;
+  }
+}
+.anim-flicker {
+  animation: flicker 5.5s linear infinite;
+}
+
+/* 흐르는 자막 */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.anim-marquee {
+  animation: marquee 18s linear infinite;
+  will-change: transform;
+}
+.anim-marquee-fast {
+  animation: marquee 9s linear infinite;
+  will-change: transform;
+}
+
+/* 심장박동 확대 */
+@keyframes thump {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.07);
+  }
+  24% {
+    transform: scale(1);
+  }
+  36% {
+    transform: scale(1.045);
+  }
+  48% {
+    transform: scale(1);
+  }
+}
+.anim-thump {
+  animation: thump 1.5s ease-in-out infinite;
+}
+
+/* 반짝이 스윕 */
+@keyframes sheen {
+  0% {
+    transform: translateX(-130%) skewX(-22deg);
+  }
+  100% {
+    transform: translateX(330%) skewX(-22deg);
+  }
+}
+.anim-sheen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  animation: sheen 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 회전 광선 */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.anim-spin-slow {
+  animation: spin-slow 9s linear infinite;
+}
+
+/* 위아래 둥둥 */
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+.anim-bob {
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+/* 무지개 색상 순환 (촌스러움 담당) */
+@keyframes hue-cycle {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+.anim-hue {
+  animation: hue-cycle 4s linear infinite;
+}
+
+/* 도장 쾅 */
+@keyframes stamp-slam {
+  0% {
+    transform: scale(4.5) rotate(-24deg);
+    opacity: 0;
+    filter: blur(7px);
+  }
+  55% {
+    transform: scale(0.88) rotate(-11deg);
+    opacity: 1;
+    filter: blur(0);
+  }
+  70% {
+    transform: scale(1.12) rotate(-13deg);
+  }
+  100% {
+    transform: scale(1) rotate(-12deg);
+    opacity: 1;
+  }
+}
+.anim-stamp {
+  animation: stamp-slam 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+
+/* 지폐 낙하 */
+@keyframes bill-fall {
+  0% {
+    transform: translateY(-14vh) rotate(var(--r0)) scale(var(--s));
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(115vh) rotate(var(--r1)) scale(var(--s));
+    opacity: 1;
+  }
+}
+
+/* 철창 내려옴 */
+@keyframes bars-drop {
+  0% {
+    transform: translateY(-100%);
+  }
+  75% {
+    transform: translateY(4%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.anim-bars-drop {
+  animation: bars-drop 0.75s cubic-bezier(0.3, 1.3, 0.5, 1) forwards;
+}
+
+/* 등장 */
+@keyframes pop-in {
+  0% {
+    transform: scale(0.4) translateY(30px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.06) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.anim-pop {
+  animation: pop-in 0.42s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* 조준선 */
+@keyframes reticle {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.09);
+    opacity: 0.62;
+  }
+}
+.anim-reticle {
+  animation: reticle 0.85s ease-in-out infinite;
+}
+
+/* 카운트다운 숫자 */
+@keyframes count-pop {
+  0% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+.anim-count {
+  animation: count-pop 1s ease-out forwards;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMPONENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* 금속 명판 */
+.plate {
+  position: relative;
+  border: 3px solid #0b0e11;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.65),
+    0 8px 22px rgba(0, 0, 0, 0.7);
+}
+
+/* 리벳(나사) */
+.rivet {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #eef3f8, #7c858e 45%, #2a2f34 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 도장 */
+.stamp {
+  font-family: var(--font-head);
+  color: #e10600;
+  border: 7px solid #e10600;
+  border-radius: 10px;
+  padding: 0.1em 0.34em;
+  letter-spacing: 0.06em;
+  opacity: 0.94;
+  text-shadow: 0 0 3px rgba(225, 6, 0, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(225, 6, 0, 0.2),
+    0 0 22px rgba(225, 6, 0, 0.35);
+  mix-blend-mode: normal;
+}
+.stamp-blue {
+  color: #0047ff;
+  border-color: #0047ff;
+  text-shadow: 0 0 3px rgba(0, 71, 255, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(0, 71, 255, 0.2),
+    0 0 22px rgba(0, 71, 255, 0.35);
+}
+.stamp-gold {
+  color: #ffc72c;
+  border-color: #ffc72c;
+  text-shadow: 0 0 3px rgba(255, 199, 44, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(255, 199, 44, 0.2),
+    0 0 26px rgba(255, 199, 44, 0.4);
+}
+
+/* 감옥 창살 */
+.bars {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 52px,
+    rgba(0, 0, 0, 0.5) 52px 56px,
+    #6b747c 56px 68px,
+    #2a3036 68px 74px,
+    rgba(0, 0, 0, 0.5) 74px 78px,
+    transparent 78px 130px
+  );
+}
+
+/* 머그샷 신장 눈금 */
+.ruler-line {
+  position: relative;
+  border-top: 2px solid rgba(255, 255, 255, 0.32);
+}
+
+/* 버튼 (컨트롤러) */
+.btn {
+  position: relative;
+  font-family: var(--font-head);
+  border-radius: 10px;
+  border: 3px solid #000;
+  padding: 0.72rem 1rem;
+  transition:
+    transform 0.08s ease,
+    filter 0.15s ease;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.42),
+    0 5px 0 rgba(0, 0, 0, 0.55),
+    0 8px 16px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.btn:active {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(0, 0, 0, 0.55);
+}
+.btn:disabled {
+  filter: grayscale(0.85) brightness(0.55);
+  cursor: not-allowed;
+}
+.btn-red {
+  background: linear-gradient(180deg, #ff4437 0%, #e10600 45%, #8f0400 100%);
+  color: #fff;
+}
+.btn-blue {
+  background: linear-gradient(180deg, #3d7bff 0%, #0047ff 45%, #00227f 100%);
+  color: #fff;
+}
+.btn-gold {
+  background: linear-gradient(180deg, #ffe08a 0%, #ffc72c 45%, #9c6f00 100%);
+  color: #2a1c00;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.btn-steel {
+  background: linear-gradient(180deg, #6f7a84 0%, #3c444c 45%, #1b2026 100%);
+  color: #e8edf2;
+}
+.btn-love {
+  background: linear-gradient(180deg, #ff8ac4 0%, #ff3e9d 45%, #a30058 100%);
+  color: #fff;
+}
+.btn-green {
+  background: linear-gradient(180deg, #6ee79a 0%, #22c55e 45%, #10682f 100%);
+  color: #04220f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* 접속 상태 표시등 */
+.led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 9px currentColor;
+}
+
+/* 스크롤바 숨김 */
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+.no-bar {
+  scrollbar-width: none;
+}
+
+/* TV 화면 스케일 기준 — 1920x1080 가정, vw/vh 기반
+   100vw 는 스크롤바 폭을 포함해 가로 넘침을 유발하므로 100% 사용 */
+.tv-root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 접근성: 모션 최소화 요청은 무시(파티용). 단 시스템 부하 대비 GPU 힌트 */
+.gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}

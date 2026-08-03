@@ -1,0 +1,24 @@
+[Unit]
+Description=총각 검거 작전 (결혼 파티 게임 서버)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/marry
+Environment=NODE_ENV=production
+Environment=PORT=8000
+Environment=HOST=127.0.0.1
+Environment=CONFIG_PATH=/opt/marry/config.json
+Environment=STATE_PATH=/opt/marry/state.json
+ExecStart=/usr/bin/node /opt/marry/server/index.mjs
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=marry
+
+# 1GB 서버 보호
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

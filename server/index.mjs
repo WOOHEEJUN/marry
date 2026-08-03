@@ -1,0 +1,194 @@
+// ══════════════════════════════════════════════════════════════
+// 🚨 총각 검거 작전 — 서버
+// 정적 파일 + WebSocket 실시간 동기화를 한 프로세스에서 처리
+// ══════════════════════════════════════════════════════════════
+import Fastify from 'fastify'
+import fastifyStatic from '@fastify/static'
+import fastifyWs from '@fastify/websocket'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { initState, reduce, publicView, controlView, publicConfig } from './state.mjs'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const ROOT = path.resolve(__dirname, '..')
+
+const PORT = Number(process.env.PORT || 8000)
+const HOST = process.env.HOST || '0.0.0.0'
+const CONFIG_PATH = process.env.CONFIG_PATH || path.join(ROOT, 'config.json')
+const STATE_PATH = process.env.STATE_PATH || path.join(ROOT, 'state.json')
+const DIST = path.join(ROOT, 'dist')
+
+// ── 설정 로드 ──────────────────────────────────────────────────
+function loadConfig() {
+  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))
+}
+let config = loadConfig()
+
+// ── 상태 로드/저장 ─────────────────────────────────────────────
+let state
+try {
+  if (fs.existsSync(STATE_PATH)) {
+    state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'))
+    // 설정이 바뀌어 게임이 추가된 경우 병합
+    const fresh = initState(config)
+    for (const k of Object.keys(fresh.games)) {
+      if (!state.games[k]) state.games[k] = fresh.games[k]
+    }
+  } else {
+    state = initState(config)
+  }
+} catch {
+  state = initState(config)
+}
+
+let saveTimer = null
+function persist() {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    fs.writeFile(STATE_PATH, JSON.stringify(state), () => {})
+  }, 250)
+}
+
+// ── 소켓 관리 ──────────────────────────────────────────────────
+/** @type {Set<{sock:any, role:string}>} */
+const clients = new Set()
+
+const counts = () => {
+  const c = { tv: 0, control: 0, spectator: 0, admin: 0 }
+  for (const cl of clients) c[cl.role] = (c[cl.role] || 0) + 1
+  return c
+}
+
+function send(cl, msg) {
+  try {
+    if (cl.sock.readyState === 1) cl.sock.send(JSON.stringify(msg))
+  } catch {}
+}
+
+function pushState(target) {
+  const conn = counts()
+  const pub = { type: 'state', state: publicView(state, config), conn }
+  const ctl = { type: 'state', state: controlView(state, config), conn }
+  for (const cl of clients) {
+    if (target && cl !== target) continue
+    send(cl, cl.role === 'control' || cl.role === 'admin' ? ctl : pub)
+  }
+}
+
+function pushFx(list) {
+  if (!list?.length) return
+  for (const f of list) {
+    const msg = { type: 'fx', fx: { ...f, _id: Math.random().toString(36).slice(2) } }
+    for (const cl of clients) send(cl, msg)
+  }
+}
+
+function pushConfig(target) {
+  const pub = { type: 'config', config: publicConfig(config) }
+  const full = { type: 'config', config }
+  for (const cl of clients) {
+    if (target && cl !== target) continue
+    send(cl, cl.role === 'control' || cl.role === 'admin' ? full : pub)
+  }
+}
+
+// ── 서버 ───────────────────────────────────────────────────────
+const app = Fastify({ logger: false, trustProxy: true })
+await app.register(fastifyWs, { options: { maxPayload: 1 << 20 } })
+
+app.get('/api/health', async () => ({ ok: true, up: process.uptime(), conn: counts() }))
+
+// 어드민: 설정 조회/수정 (PIN 필요)
+app.post('/api/config', async (req, reply) => {
+  const { pin, config: next } = req.body || {}
+  if (pin !== config.controlPin) return reply.code(403).send({ error: 'bad pin' })
+  try {
+    config = { ...next, controlPin: next.controlPin || config.controlPin }
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8')
+    // 새 게임이 추가됐으면 상태에 반영
+    const fresh = initState(config)
+    for (const k of Object.keys(fresh.games)) {
+      if (!state.games[k]) state.games[k] = fresh.games[k]
+    }
+    pushConfig()
+    pushState()
+    persist()
+    return { ok: true }
+  } catch (e) {
+    return reply.code(500).send({ error: String(e) })
+  }
+})
+
+app.register(async function (f) {
+  f.get('/ws', { websocket: true }, (sock) => {
+    const cl = { sock, role: 'spectator' }
+    clients.add(cl)
+
+    sock.on('message', (raw) => {
+      let msg
+      try {
+        msg = JSON.parse(raw.toString())
+      } catch {
+        return
+      }
+
+      // 역할 등록
+      if (msg.type === 'hello') {
+        const wants = msg.role
+        if (wants === 'control' || wants === 'admin') {
+          if (msg.pin !== config.controlPin) {
+            send(cl, { type: 'denied' })
+            return
+          }
+        }
+        cl.role = ['tv', 'control', 'admin', 'spectator'].includes(wants) ? wants : 'spectator'
+        send(cl, { type: 'hello.ok', role: cl.role })
+        pushConfig(cl)
+        pushState(cl)
+        pushState() // 접속자 수 갱신 브로드캐스트
+        return
+      }
+
+      // 액션은 컨트롤러/어드민만
+      if (msg.type === 'action') {
+        if (cl.role !== 'control' && cl.role !== 'admin') return
+        const { fx } = reduce(state, config, msg.action)
+        pushState()
+        pushFx(fx)
+        persist()
+        return
+      }
+
+      if (msg.type === 'ping') {
+        send(cl, { type: 'pong', t: msg.t })
+      }
+    })
+
+    const bye = () => {
+      clients.delete(cl)
+      pushState()
+    }
+    sock.on('close', bye)
+    sock.on('error', bye)
+  })
+})
+
+// 정적 파일 (빌드 결과물)
+if (fs.existsSync(DIST)) {
+  await app.register(fastifyStatic, { root: DIST, prefix: '/' })
+  // SPA 폴백
+  app.setNotFoundHandler((req, reply) => {
+    if (req.raw.url?.startsWith('/api') || req.raw.url?.startsWith('/ws')) {
+      return reply.code(404).send({ error: 'not found' })
+    }
+    return reply.type('text/html').send(fs.readFileSync(path.join(DIST, 'index.html')))
+  })
+} else {
+  app.get('/', async () => 'dist 없음 — `npm run build` 후 다시 실행하거나 개발 모드는 `npm run dev`')
+}
+
+await app.listen({ port: PORT, host: HOST })
+console.log(`🚨 총각 검거 작전 서버 기동  http://${HOST}:${PORT}`)
+console.log(`   설정: ${CONFIG_PATH}`)
+console.log(`   상태: ${STATE_PATH}`)

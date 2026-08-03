@@ -1,0 +1,33 @@
+# ══════════════════════════════════════════════════════════════
+# 🚨 총각 검거 작전 — Caddy 설정
+#   sslip.io 로 도메인 없이 자동 HTTPS
+#   basic auth 없음: 친구들이 QR 스캔만으로 바로 접속 가능해야 함
+#   민감한 /control, /admin 은 앱 자체 PIN으로 보호됨
+# ══════════════════════════════════════════════════════════════
+
+158-247-222-58.sslip.io {
+	encode zstd gzip
+
+	# 앱 (WebSocket 포함 — Caddy v2 는 reverse_proxy 가 그대로 통과시킴)
+	reverse_proxy 127.0.0.1:8000
+
+	# 스캐너/봇 차단
+	@bots {
+		path_regexp bot (?i)^/(wp-admin|wp-login|wp-content|xmlrpc\.php|\.env|\.git|phpmyadmin|admin\.php|vendor/|cgi-bin/)
+	}
+	respond @bots 404
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy no-referrer
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/marry.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}
