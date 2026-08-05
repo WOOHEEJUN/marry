@@ -573,6 +573,170 @@ export default function Admin() {
                     </>
                   )}
 
+                  {gc.type === 'tally' && (
+                    <>
+                      <div className="ops-divider" />
+                      <div className="ops-grid c3">
+                        <Field
+                          label="회차 수"
+                          type="number"
+                          value={gc.rounds ?? 3}
+                          onChange={(v) => up((c) => void (G(c, gc.id).rounds = Number(v) || 1))}
+                        />
+                        <Field
+                          label="합계 목표"
+                          type="number"
+                          value={gc.target ?? 0}
+                          onChange={(v) => up((c) => void (G(c, gc.id).target = Number(v) || 0))}
+                        />
+                        <Field
+                          label="단위"
+                          hint="명, 개 …"
+                          value={gc.tallyUnit || ''}
+                          onChange={(v) => up((c) => void (G(c, gc.id).tallyUnit = v))}
+                        />
+                      </div>
+                      <Field
+                        label="기록 항목 이름"
+                        hint="예: 찍힌 인원"
+                        value={gc.tallyLabel || ''}
+                        onChange={(v) => up((c) => void (G(c, gc.id).tallyLabel = v))}
+                      />
+                      <div className="ops-note">
+                        회차마다 숫자를 기록하고, 합계가 목표에 닿으면 자동으로 인용 선고됩니다.
+                      </div>
+                    </>
+                  )}
+
+                  {gc.type === 'versus' && (
+                    <>
+                      <div className="ops-divider" />
+                      <div className="ops-sub">승부 방식</div>
+                      <div className="ops-grid c2">
+                        <Btn
+                          kind={gc.scoring !== 'points' ? 'primary' : 'ghost'}
+                          onClick={() => up((c) => void (G(c, gc.id).scoring = 'rounds'))}
+                        >
+                          승수제
+                        </Btn>
+                        <Btn
+                          kind={gc.scoring === 'points' ? 'primary' : 'ghost'}
+                          onClick={() => up((c) => void (G(c, gc.id).scoring = 'points'))}
+                        >
+                          점수 합산제
+                        </Btn>
+                      </div>
+                      <div className="ops-grid c3">
+                        <Field
+                          label="회차 수"
+                          type="number"
+                          value={gc.rounds ?? 1}
+                          onChange={(v) => up((c) => void (G(c, gc.id).rounds = Number(v) || 1))}
+                        />
+                        {gc.scoring !== 'points' && (
+                          <Field
+                            label="인용 기준 승수"
+                            type="number"
+                            value={gc.clearThreshold ?? 1}
+                            onChange={(v) =>
+                              up((c) => void (G(c, gc.id).clearThreshold = Number(v) || 1))
+                            }
+                          />
+                        )}
+                        <Field
+                          label="점수 단위"
+                          hint="점 …"
+                          value={gc.tallyUnit || ''}
+                          onChange={(v) => up((c) => void (G(c, gc.id).tallyUnit = v))}
+                        />
+                      </div>
+                      <div className="ops-note">
+                        {gc.scoring === 'points'
+                          ? '회차마다 양측 점수를 입력하고, 전 회차를 마치면 합계가 높은 쪽이 승리합니다.'
+                          : '회차마다 승패를 눌러 판정하고, 기준 승수에 도달하면 인용 선고됩니다.'}
+                      </div>
+                    </>
+                  )}
+
+                  {gc.type === 'draw' && (
+                    <>
+                      <div className="ops-divider" />
+                      <div className="ops-sub">노역 항목 (제비뽑기)</div>
+                      <div className="ops-hint">
+                        추첨은 중복 없이 진행됩니다. 완수 시 아래 금액이 적립금에 가산됩니다.
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {(gc.missions || []).map((ms, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 8,
+                              padding: 10,
+                              borderRadius: 10,
+                              border: '1px solid var(--border)',
+                              background: 'var(--surface-2)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <input
+                                className="ops-input"
+                                value={ms.title}
+                                placeholder="미션 이름"
+                                onChange={(e) =>
+                                  up((c) => void (G(c, gc.id).missions![i].title = e.target.value))
+                                }
+                              />
+                              <input
+                                className="ops-input ops-num"
+                                type="number"
+                                style={{ width: 96, flex: 'none', textAlign: 'center' }}
+                                value={ms.reward ?? 15}
+                                onChange={(e) =>
+                                  up(
+                                    (c) =>
+                                      void (G(c, gc.id).missions![i].reward =
+                                        Number(e.target.value) || 0)
+                                  )
+                                }
+                              />
+                            </div>
+                            <textarea
+                              className="ops-textarea"
+                              value={ms.desc || ''}
+                              placeholder="미션 상세 설명 (TV에 표시)"
+                              onChange={(e) =>
+                                up((c) => void (G(c, gc.id).missions![i].desc = e.target.value))
+                              }
+                            />
+                            <Btn
+                              size="sm"
+                              kind="ghost"
+                              block
+                              onClick={() => up((c) => void G(c, gc.id).missions!.splice(i, 1))}
+                            >
+                              삭제
+                            </Btn>
+                          </div>
+                        ))}
+                      </div>
+                      <Btn
+                        kind="ghost"
+                        block
+                        onClick={() =>
+                          up((c) => {
+                            const gg = G(c, gc.id)
+                            if (!gg.missions) gg.missions = []
+                            gg.missions.push({ title: '', desc: '', reward: 15 })
+                          })
+                        }
+                      >
+                        노역 항목 추가
+                      </Btn>
+                    </>
+                  )}
+
                   {gc.type === 'bonus' && (
                     <>
                       <div className="ops-divider" />
@@ -591,6 +755,15 @@ export default function Admin() {
                               background: 'var(--surface-2)',
                             }}
                           >
+                            <input
+                              className="ops-input"
+                              value={it.cat || ''}
+                              placeholder="분류 (예: 취향 & 식성)"
+                              style={{ fontSize: 13 }}
+                              onChange={(e) =>
+                                up((c) => void (G(c, gc.id).interviews![i].cat = e.target.value))
+                              }
+                            />
                             <input
                               className="ops-input"
                               value={it.q}

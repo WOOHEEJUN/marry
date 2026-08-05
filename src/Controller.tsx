@@ -5,9 +5,12 @@ import type {
   BonusState,
   Config,
   CulpritState,
+  DrawState,
   GameConfig,
   GameState,
   SimpleState,
+  TallyState,
+  VersusState,
   VoiceState,
 } from './types'
 
@@ -407,6 +410,300 @@ function VoiceControl({ g, gc, d }: { g: VoiceState; gc: GameConfig; d: (a: any)
   )
 }
 
+/** 합산형 — 라운드마다 숫자 기록 (눈 가리고 셀카 등) */
+function TallyControl({ g, gc, d }: { g: TallyState; gc: GameConfig; d: (a: any) => void }) {
+  const [v, setV] = useState(0)
+  const unit = gc.tallyUnit || '개'
+  const target = gc.target ?? 0
+  const total = g.values.reduce((a, b) => a + (b || 0), 0)
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge accent">
+          {g.round + 1}회차 / {g.results.length}
+        </span>
+        <span className="ops-badge">
+          누계 {total} / {target}
+          {unit}
+        </span>
+      </div>
+
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>
+          이번 회차 {gc.tallyLabel || '기록'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Btn kind="ghost" onClick={() => setV((x) => Math.max(0, x - 1))}>
+            −
+          </Btn>
+          <input
+            className="ops-input ops-num"
+            type="number"
+            value={v}
+            onChange={(e) => setV(Math.max(0, Number(e.target.value) || 0))}
+            style={{ textAlign: 'center', fontSize: 24, minHeight: 54 }}
+          />
+          <Btn kind="ghost" onClick={() => setV((x) => x + 1)}>
+            ＋
+          </Btn>
+        </div>
+        <div className="ops-grid c4" style={{ marginTop: 8 }}>
+          {[0, 1, 2, 3].map((n) => (
+            <Btn key={n} size="sm" kind={v === n ? 'on' : 'ghost'} onClick={() => setV(n)}>
+              {n}
+              {unit}
+            </Btn>
+          ))}
+        </div>
+      </div>
+
+      <Btn
+        kind="success"
+        size="lg"
+        block
+        disabled={g.cleared || g.failed}
+        onClick={() => {
+          d({ type: 'tally.record', value: v })
+          setV(0)
+        }}
+      >
+        {g.round + 1}회차 기록 ({v}
+        {unit})
+      </Btn>
+      <div className="ops-hint" style={{ textAlign: 'center' }}>
+        누계가 {target}
+        {unit}에 닿으면 자동으로 인용 선고됩니다
+      </div>
+
+      <div className="ops-rounds">
+        {g.values.map((val, i) => (
+          <button
+            key={i}
+            className={`ops-round ${g.results[i] !== 'pending' ? 'win' : i === g.round ? 'now' : ''}`}
+            onClick={() => d({ type: 'tally.setRound', round: i })}
+          >
+            {i + 1}회
+            <br />
+            {g.results[i] !== 'pending' ? `${val}${unit}` : '-'}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** 대결형 — 피고인 vs 검사단 */
+function VersusControl({
+  g,
+  gc,
+  config,
+  d,
+}: {
+  g: VersusState
+  gc: GameConfig
+  config: Config
+  d: (a: any) => void
+}) {
+  const points = gc.scoring === 'points'
+  const [mine, setMine] = useState(0)
+  const [theirs, setTheirs] = useState(0)
+  const unit = gc.tallyUnit || '점'
+  const sumMine = g.mine.reduce((a, b) => a + (b || 0), 0)
+  const sumTheirs = g.theirs.reduce((a, b) => a + (b || 0), 0)
+
+  if (!points) {
+    return (
+      <>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <span className="ops-badge accent">
+            {g.round + 1}회 / {g.results.length}
+          </span>
+          <span className="ops-badge">
+            {config.defendant.name} {g.results.filter((r) => r === 'win').length} : 검사단{' '}
+            {g.results.filter((r) => r === 'lose').length}
+          </span>
+        </div>
+        <div className="ops-grid c2">
+          <Btn
+            kind="success"
+            size="lg"
+            disabled={g.cleared || g.failed}
+            onClick={() => d({ type: 'versus.judge', win: true })}
+          >
+            {config.defendant.name} 승
+          </Btn>
+          <Btn
+            kind="danger"
+            size="lg"
+            disabled={g.cleared || g.failed}
+            onClick={() => d({ type: 'versus.judge', win: false })}
+          >
+            검사단 승
+          </Btn>
+        </div>
+        <div className="ops-hint" style={{ textAlign: 'center' }}>
+          {gc.clearThreshold ?? 1}회 승리하면 인용 선고됩니다
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge accent">
+          {g.round + 1}회 / {g.results.length}
+        </span>
+        <span className="ops-badge">
+          누계 {sumMine} : {sumTheirs}
+        </span>
+      </div>
+
+      <div className="ops-grid c2">
+        <div className="ops-field">
+          <label className="ops-label">{config.defendant.name} 점수</label>
+          <input
+            className="ops-input ops-num"
+            type="number"
+            value={mine}
+            onChange={(e) => setMine(Number(e.target.value) || 0)}
+            style={{ textAlign: 'center', fontSize: 22, minHeight: 52 }}
+          />
+        </div>
+        <div className="ops-field">
+          <label className="ops-label">검사단 점수</label>
+          <input
+            className="ops-input ops-num"
+            type="number"
+            value={theirs}
+            onChange={(e) => setTheirs(Number(e.target.value) || 0)}
+            style={{ textAlign: 'center', fontSize: 22, minHeight: 52 }}
+          />
+        </div>
+      </div>
+
+      <Btn
+        kind="success"
+        size="lg"
+        block
+        disabled={g.cleared || g.failed}
+        onClick={() => {
+          d({ type: 'versus.record', mine, theirs })
+          setMine(0)
+          setTheirs(0)
+        }}
+      >
+        {g.round + 1}회 기록 ({mine} : {theirs})
+      </Btn>
+      <div className="ops-hint" style={{ textAlign: 'center' }}>
+        {g.results.length}회 모두 마치면 합산 점수가 높은 쪽이 승리합니다 (단위 {unit})
+      </div>
+
+      <div className="ops-rounds">
+        {g.results.map((r, i) => (
+          <button
+            key={i}
+            className={`ops-round ${r === 'win' ? 'win' : r === 'lose' ? 'lose' : i === g.round ? 'now' : ''}`}
+            onClick={() => d({ type: 'versus.setRound', round: i })}
+          >
+            {i + 1}회
+            <br />
+            {r !== 'pending' ? `${g.mine[i]}:${g.theirs[i]}` : '-'}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** 제비뽑기 노역 */
+function DrawControl({
+  g,
+  gc,
+  state,
+  d,
+}: {
+  g: DrawState
+  gc: GameConfig
+  state: AppState
+  d: (a: any) => void
+}) {
+  const missions = gc.missions || []
+  const left = missions.length - g.drawn.length
+  const m = state.meta
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge warn">
+          미확보 {m.shortfall}
+          {m.unit}
+        </span>
+        <span className="ops-badge">남은 항목 {left}개</span>
+      </div>
+
+      {g.current === null ? (
+        <>
+          <Btn
+            kind="warn"
+            size="lg"
+            block
+            disabled={left <= 0}
+            onClick={() => d({ type: 'draw.pick' })}
+          >
+            {left > 0 ? '추첨하기' : '남은 항목 없음'}
+          </Btn>
+          <div className="ops-hint" style={{ textAlign: 'center' }}>
+            피고인이 「도전」을 외치면 누르세요. 이미 나온 항목은 다시 뽑히지 않습니다.
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ops-note" style={{ borderColor: 'var(--warn)' }}>
+            <b style={{ color: '#fcd34d' }}>
+              제{g.current + 1}호 · {g.mission?.title}
+            </b>
+            <br />
+            {g.mission?.desc}
+            <br />
+            <span className="ops-hint">
+              완수 시 +{g.mission?.reward ?? gc.missions?.[0]?.reward ?? 15}
+              {m.unit}
+            </span>
+          </div>
+          <div className="ops-grid c2">
+            <Btn kind="success" size="lg" onClick={() => d({ type: 'draw.judge', win: true })}>
+              완수
+            </Btn>
+            <Btn kind="danger" size="lg" onClick={() => d({ type: 'draw.judge', win: false })}>
+              미완수
+            </Btn>
+          </div>
+          <Btn kind="ghost" size="sm" block onClick={() => d({ type: 'draw.undoPick' })}>
+            추첨 취소 (다시 뽑기)
+          </Btn>
+        </>
+      )}
+
+      <div className="ops-divider" />
+      <div className="ops-sub">노역 항목</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {missions.map((ms, i) => (
+          <div key={i} className="ops-row">
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              제{i + 1}호 · {ms.title}
+            </span>
+            <span className="ops-badge" style={{ flex: 'none' }}>
+              {g.results[i] === 'win' ? '완수' : g.results[i] === 'lose' ? '미완수' : '대기'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 function BonusControl({
   g,
   config,
@@ -419,15 +716,16 @@ function BonusControl({
   d: (a: any) => void
 }) {
   const failed = config.games.filter((x) => !x.bonus && state.games[x.id]?.failed)
-  const step = config.prize.bonusStep ?? 10
-  const room = Math.max(0, state.meta.maxTotal - state.prize.earned)
-  const amounts = [step, step * 2, room].filter((v, i, a) => v > 0 && a.indexOf(v) === i)
+  const itvs = config.games.find((x) => x.id === 'witnessq')?.interviews || []
 
   return (
     <>
-      <span className="ops-badge accent">
-        질문 {g.round + 1} / {g.results.length}
-      </span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span className="ops-badge accent">
+          신문 {g.round + 1} / {g.results.length}
+        </span>
+        {g.category && <span className="ops-badge">{g.category}</span>}
+      </div>
 
       <div className="ops-note">
         <div className="ops-hint" style={{ marginBottom: 3 }}>신문 사항 — TV에 표시됨</div>
@@ -461,43 +759,68 @@ function BonusControl({
         </Btn>
       </div>
 
-      <div className="ops-divider" />
-
-      <div className="ops-sub">진술 일치 시 보상 — 둘 중 하나 선택</div>
-
-      <div>
-        <div className="ops-hint" style={{ marginBottom: 6 }}>1. 기각된 공소사실 재심 개시</div>
-        {failed.length === 0 ? (
-          <div className="ops-note">현재 기각된 공소사실이 없습니다</div>
-        ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {failed.map((x) => (
-              <Btn key={x.id} kind="warn" onClick={() => d({ type: 'revive.grant', gameId: x.id })}>
-                {x.no} · {x.charge || x.title} 재심
-              </Btn>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="ops-hint" style={{ marginBottom: 6 }}>
-          2. 재판부 직권 적립금 가산 — 최대치까지 {room}
-          {state.meta.unit} 남음
-        </div>
-        <div className="ops-grid c3">
-          {amounts.map((v) => (
-            <Btn
-              key={v}
-              disabled={room <= 0}
-              onClick={() => d({ type: 'prize.bonus', amount: v, label: '재판부 직권 가산' })}
+      {/* 신문 사항 고르기 */}
+      <details className="ops-details">
+        <summary style={{ padding: '8px 0' }}>신문 사항 고르기 ({itvs.length}개)</summary>
+        <div className="ops-list" style={{ marginTop: 8, maxHeight: 320 }}>
+          {itvs.map((it, i) => (
+            <button
+              key={i}
+              className="ops-row"
+              style={{
+                textAlign: 'left',
+                cursor: 'pointer',
+                borderColor:
+                  i === g.round
+                    ? 'var(--accent)'
+                    : g.results[i] === 'win'
+                      ? 'var(--success)'
+                      : g.results[i] === 'lose'
+                        ? 'var(--danger)'
+                        : 'var(--border)',
+              }}
+              onClick={() => d({ type: 'bonus.setRound', round: i })}
             >
-              +{v}
-              {state.meta.unit}
-            </Btn>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span className="ops-hint">{it.cat} · </span>
+                {it.q}
+              </span>
+              {g.results[i] !== 'pending' && (
+                <span
+                  className={`ops-badge ${g.results[i] === 'win' ? 'success' : 'danger'}`}
+                  style={{ flex: 'none' }}
+                >
+                  {g.results[i] === 'win' ? '일치' : '불일치'}
+                </span>
+              )}
+            </button>
           ))}
         </div>
-      </div>
+      </details>
+
+      <div className="ops-divider" />
+
+      <div className="ops-sub">진술이 일치하면 기각된 공소사실 재심 개시</div>
+      <div className="ops-hint">공소사실 1건당 재심은 1회만 허가됩니다</div>
+      {failed.length === 0 ? (
+        <div className="ops-note">현재 기각된 공소사실이 없습니다</div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {failed.map((x) => {
+            const used = (state.games[x.id]?.revives || 0) >= 1
+            return (
+              <Btn
+                key={x.id}
+                kind={used ? 'ghost' : 'warn'}
+                disabled={used}
+                onClick={() => d({ type: 'revive.grant', gameId: x.id })}
+              >
+                {x.no} · {x.charge || x.title} {used ? '(재심 완료)' : '재심'}
+              </Btn>
+            )
+          })}
+        </div>
+      )}
     </>
   )
 }
@@ -750,6 +1073,13 @@ export default function Controller() {
             {gc.type === 'voice' && <VoiceControl g={g as VoiceState} gc={gc} d={d} />}
             {gc.type === 'bonus' && (
               <BonusControl g={g as BonusState} config={config} state={state} d={d} />
+            )}
+            {gc.type === 'tally' && <TallyControl g={g as TallyState} gc={gc} d={d} />}
+            {gc.type === 'versus' && (
+              <VersusControl g={g as VersusState} gc={gc} config={config} d={d} />
+            )}
+            {gc.type === 'draw' && (
+              <DrawControl g={g as DrawState} gc={gc} state={state} d={d} />
             )}
             {gc.type === 'simple' && <SimpleControl g={g as SimpleState} d={d} />}
 

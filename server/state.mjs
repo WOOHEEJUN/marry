@@ -33,33 +33,49 @@ export function initState(config) {
 
 function initGame(g) {
   const base = { type: g.type, cleared: false, failed: false, round: 0, revives: 0 }
+  const pend = (n) => Array.from({ length: n }, () => 'pending')
+
   if (g.type === 'culprit') {
-    return {
-      ...base,
-      results: Array.from({ length: g.rounds ?? 3 }, () => 'pending'),
-      picked: null,
-      guilty: null,
-      revealed: false,
-    }
+    return { ...base, results: pend(g.rounds ?? 3), picked: null, guilty: null, revealed: false }
   }
   if (g.type === 'voice') {
     return {
       ...base,
-      results: Array.from({ length: g.rounds ?? 5 }, () => 'pending'),
+      results: pend(g.questions?.length ?? g.rounds ?? 5),
       listensLeft: g.maxListens ?? 3,
       revealed: false,
     }
   }
-  if (g.type === 'bonus') {
+  if (g.type === 'tally') {
+    const n = g.rounds ?? 3
+    return { ...base, results: pend(n), values: Array.from({ length: n }, () => 0) }
+  }
+  if (g.type === 'versus') {
+    const n = g.rounds ?? 1
     return {
       ...base,
-      results: Array.from({ length: (g.interviews || []).length }, () => 'pending'),
+      results: pend(n),
+      mine: Array.from({ length: n }, () => 0),
+      theirs: Array.from({ length: n }, () => 0),
+    }
+  }
+  if (g.type === 'draw') {
+    return {
+      ...base,
+      results: pend((g.missions || []).length),
+      drawn: [],
+      current: null,
       revealed: false,
     }
   }
-  // simple — 성공/실패 판정만
+  if (g.type === 'bonus') {
+    return { ...base, results: pend((g.interviews || []).length), revealed: false }
+  }
+  // simple — 인용/기각 선고만
   return { ...base, results: [] }
 }
+
+const sum = (a) => (a || []).reduce((x, y) => x + (Number(y) || 0), 0)
 
 /** 설정이 바뀌었을 때 기존 상태와 병합 (라운드 수 변경 등 반영) */
 export function mergeState(state, config) {
@@ -72,15 +88,23 @@ export function mergeState(state, config) {
     }
     // 문제/라운드 수가 늘어났으면 칸 추가
     const want =
-      g.type === 'culprit'
+      g.type === 'culprit' || g.type === 'tally' || g.type === 'versus'
         ? (g.rounds ?? 3)
         : g.type === 'voice'
           ? (g.questions?.length ?? g.rounds ?? 5)
           : g.type === 'bonus'
             ? (g.interviews?.length ?? 0)
-            : 0
+            : g.type === 'draw'
+              ? (g.missions?.length ?? 0)
+              : 0
     if (Array.isArray(cur.results) && want > cur.results.length) {
       cur.results = [...cur.results, ...Array.from({ length: want - cur.results.length }, () => 'pending')]
+    }
+    // 숫자 배열도 라운드 수에 맞춰 늘린다
+    for (const key of ['values', 'mine', 'theirs']) {
+      if (Array.isArray(cur[key]) && want > cur[key].length) {
+        cur[key] = [...cur[key], ...Array.from({ length: want - cur[key].length }, () => 0)]
+      }
     }
   }
   // 설정에서 사라진 게임 제거
@@ -129,21 +153,40 @@ function note(state, label) {
   if (state.log.length > 60) state.log.length = 60
 }
 
-// ── 게임 종료 판정 ─────────────────────────────────────────────
+// ── 공소사실 종료 판정 ──────────────────────────────────────────
 function settle(state, config, id, fx) {
   const g = state.games[id]
   const gc = findGame(config, id)
   if (!g || !gc || g.cleared || g.failed) return
 
-  const wins = g.results.filter((r) => r === 'win').length
   const done = g.results.length > 0 && g.results.every((r) => r !== 'pending')
-  const need = gc.clearThreshold ?? 1
 
-  if (wins >= need) {
-    grant(state, config, id, fx)
-  } else if (done) {
-    reject(state, config, id, fx)
+  // 합산형 — 전 라운드 합계가 목표 이상이면 인용
+  if (g.type === 'tally') {
+    const total = sum(g.values)
+    const target = gc.target ?? 0
+    if (total >= target) grant(state, config, id, fx)
+    else if (done) reject(state, config, id, fx)
+    return
   }
+
+  // 대결형 — 점수제는 합계 비교, 라운드제는 승수 비교
+  if (g.type === 'versus') {
+    if (gc.scoring === 'points') {
+      if (!done) return
+      if (sum(g.mine) > sum(g.theirs)) grant(state, config, id, fx)
+      else reject(state, config, id, fx)
+      return
+    }
+    const wins = g.results.filter((r) => r === 'win').length
+    if (wins >= (gc.clearThreshold ?? 1)) grant(state, config, id, fx)
+    else if (done) reject(state, config, id, fx)
+    return
+  }
+
+  const wins = g.results.filter((r) => r === 'win').length
+  if (wins >= (gc.clearThreshold ?? 1)) grant(state, config, id, fx)
+  else if (done) reject(state, config, id, fx)
 }
 
 /** 인용 — 피고인의 항변이 받아들여짐 */
@@ -223,10 +266,14 @@ export function reduce(state, config, action) {
       break
     }
 
-    // ── 재심: 기각된 공소사실을 다시 다툴 수 있게 ──
+    // ── 재심: 기각된 공소사실을 다시 다툴 수 있게 (공소사실당 1회) ──
     case 'revive.grant': {
       const tg = state.games[action.gameId]
       const tc = findGame(config, action.gameId)
+      if (tg && tc && (tg.revives || 0) >= 1 && !action.force) {
+        note(state, `${tc.no} 재심 불가 — 이미 재심을 마쳤습니다`)
+        break
+      }
       if (tg && tc) {
         tg.failed = false
         tg.revives = (tg.revives || 0) + 1
@@ -378,6 +425,117 @@ export function reduce(state, config, action) {
       }
       break
 
+    // ── 합산형 (눈 가리고 셀카 등) ──
+    case 'tally.record': {
+      if (g?.type === 'tally') {
+        g.values[g.round] = Math.max(0, Number(action.value) || 0)
+        g.results[g.round] = 'win'
+        fx.push({ kind: 'tally', value: g.values[g.round] })
+        settle(state, config, id, fx)
+        if (!g.cleared && !g.failed && g.round < g.results.length - 1) g.round += 1
+      }
+      break
+    }
+    case 'tally.setValue': {
+      if (g?.type === 'tally') {
+        const r = Math.max(0, Math.min(g.values.length - 1, action.round ?? g.round))
+        g.values[r] = Math.max(0, Number(action.value) || 0)
+      }
+      break
+    }
+    case 'tally.setRound': {
+      if (g?.type === 'tally') {
+        g.round = Math.max(0, Math.min(g.results.length - 1, action.round))
+      }
+      break
+    }
+
+    // ── 대결형 (탁구공 빙고 / 코끼리코) ──
+    case 'versus.judge': {
+      if (g?.type === 'versus' && g.results[g.round] === 'pending') {
+        g.results[g.round] = action.win ? 'win' : 'lose'
+        fx.push(
+          action.win
+            ? { kind: 'stamp', text: '피고인 승', tone: 'gold' }
+            : { kind: 'stamp', text: '검사단 승', tone: 'blue' }
+        )
+        settle(state, config, id, fx)
+        if (!g.cleared && !g.failed && g.round < g.results.length - 1) g.round += 1
+      }
+      break
+    }
+    case 'versus.record': {
+      if (g?.type === 'versus') {
+        const r = g.round
+        g.mine[r] = Number(action.mine) || 0
+        g.theirs[r] = Number(action.theirs) || 0
+        g.results[r] = g.mine[r] >= g.theirs[r] ? 'win' : 'lose'
+        fx.push({ kind: 'tally', value: g.mine[r] })
+        settle(state, config, id, fx)
+        if (!g.cleared && !g.failed && r < g.results.length - 1) g.round += 1
+      }
+      break
+    }
+    case 'versus.setRound': {
+      if (g?.type === 'versus') {
+        g.round = Math.max(0, Math.min(g.results.length - 1, action.round))
+      }
+      break
+    }
+
+    // ── 제비뽑기 노역 (부족한 적립금 충당) ──
+    case 'draw.pick': {
+      if (g?.type === 'draw') {
+        const total = (gc.missions || []).length
+        const left = []
+        for (let i = 0; i < total; i++) {
+          if (!g.drawn.includes(i)) left.push(i)
+        }
+        if (left.length === 0) {
+          note(state, '노역 항목이 모두 소진되었습니다')
+          break
+        }
+        const pickIdx = left[Math.floor(Math.random() * left.length)]
+        g.current = pickIdx
+        g.drawn.push(pickIdx)
+        g.revealed = false
+        fx.push({ kind: 'draw', index: pickIdx })
+      }
+      break
+    }
+    case 'draw.reveal': {
+      if (g?.type === 'draw') g.revealed = true
+      break
+    }
+    case 'draw.judge': {
+      if (g?.type === 'draw' && g.current !== null) {
+        const idx = g.current
+        const mission = (gc.missions || [])[idx] || {}
+        g.results[idx] = action.win ? 'win' : 'lose'
+        if (action.win) {
+          const reward = mission.reward ?? config.prize.bonusStep ?? 15
+          state.prize.bonus = Math.max(0, (state.prize.bonus || 0) + reward)
+          const delta = syncPrize(state, config, `노역 완수 — ${mission.title || `제${idx + 1}호`}`)
+          fx.push({ kind: 'cash', amount: delta, unit: config.prize.unit })
+          fx.push({ kind: 'stamp', text: '완 수', tone: 'gold' })
+        } else {
+          note(state, `노역 미완수 — ${mission.title || `제${idx + 1}호`}`)
+          fx.push({ kind: 'fail' })
+        }
+        g.current = null
+        g.revealed = false
+      }
+      break
+    }
+    case 'draw.undoPick': {
+      if (g?.type === 'draw' && g.current !== null) {
+        g.drawn = g.drawn.filter((i) => i !== g.current)
+        g.current = null
+        g.revealed = false
+      }
+      break
+    }
+
     case 'fx':
       fx.push({ kind: action.kind, ...action.payload })
       break
@@ -412,6 +570,8 @@ function withMeta(state, config) {
       unit: config.prize.unit,
       demandTotal: mains.reduce((a, g) => a + (g.demand ?? 0), 0),
       demandStanding,
+      // 최대치까지 남은 금액 (노역으로 충당해야 할 몫)
+      shortfall: Math.max(0, (config.prize.maxTotal ?? 0) - (state.prize.earned || 0)),
     },
   }
 }
@@ -428,7 +588,14 @@ export function publicView(state, config) {
       games[id] = { ...g, wordLength: word.length, word: g.revealed ? word : null }
     } else if (g.type === 'bonus') {
       const itv = (gc.interviews || [])[g.round] || {}
-      games[id] = { ...g, question: itv.q || '', answer: g.revealed ? itv.a || '' : null }
+      games[id] = {
+        ...g,
+        question: itv.q || '',
+        category: itv.cat || '',
+        answer: g.revealed ? itv.a || '' : null,
+      }
+    } else if (g.type === 'draw') {
+      games[id] = { ...g, mission: g.current === null ? null : (gc.missions || [])[g.current] }
     } else {
       games[id] = { ...g }
     }
@@ -446,7 +613,9 @@ export function controlView(state, config) {
       games[id] = { ...g, word, wordLength: word.length, allWords: gc.questions || [] }
     } else if (g.type === 'bonus') {
       const itv = (gc.interviews || [])[g.round] || {}
-      games[id] = { ...g, question: itv.q || '', answer: itv.a || '' }
+      games[id] = { ...g, question: itv.q || '', category: itv.cat || '', answer: itv.a || '' }
+    } else if (g.type === 'draw') {
+      games[id] = { ...g, mission: g.current === null ? null : (gc.missions || [])[g.current] }
     } else {
       games[id] = { ...g }
     }

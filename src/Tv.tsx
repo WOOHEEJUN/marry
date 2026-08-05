@@ -9,6 +9,9 @@ import GameCulprit from './screens/GameCulprit'
 import GameVoice from './screens/GameVoice'
 import GameBonus from './screens/GameBonus'
 import GameSimple from './screens/GameSimple'
+import GameTally from './screens/GameTally'
+import GameVersus from './screens/GameVersus'
+import GameDraw from './screens/GameDraw'
 import Verdict from './screens/Verdict'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Role } from './types'
@@ -63,6 +66,9 @@ export default function Tv({ role = 'tv' }: { role?: Role }) {
         if (gc.type === 'culprit') return <GameCulprit state={state} config={config} gc={gc} />
         if (gc.type === 'voice') return <GameVoice state={state} config={config} gc={gc} />
         if (gc.type === 'bonus') return <GameBonus state={state} config={config} gc={gc} />
+        if (gc.type === 'tally') return <GameTally state={state} config={config} gc={gc} />
+        if (gc.type === 'versus') return <GameVersus state={state} config={config} gc={gc} />
+        if (gc.type === 'draw') return <GameDraw state={state} config={config} gc={gc} />
         return <GameSimple state={state} config={config} gc={gc} />
       case 'dashboard':
       default:

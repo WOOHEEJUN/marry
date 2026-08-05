@@ -1,7 +1,13 @@
 export type Phase = 'intro' | 'dashboard' | 'defendant' | 'game' | 'verdict'
 export type RoundResult = 'pending' | 'win' | 'lose'
 export type Role = 'tv' | 'control' | 'admin' | 'spectator'
-export type GameType = 'culprit' | 'voice' | 'bonus' | 'simple'
+export type GameType = 'culprit' | 'voice' | 'bonus' | 'simple' | 'tally' | 'versus' | 'draw'
+
+export interface Mission {
+  title: string
+  desc?: string
+  reward?: number
+}
 
 export interface Person {
   id: number
@@ -42,7 +48,16 @@ export interface GameConfig {
   maxListens?: number
   evidences?: Evidence[]
   questions?: string[]
-  interviews?: { q: string; a?: string }[]
+  interviews?: { q: string; a?: string; cat?: string }[]
+  /** tally — 합계 목표치 */
+  target?: number
+  /** tally / versus — 숫자 단위 (명, 점 …) */
+  tallyUnit?: string
+  tallyLabel?: string
+  /** versus — 'rounds'(승수) | 'points'(합계 점수) */
+  scoring?: 'rounds' | 'points'
+  /** draw — 제비뽑기 노역 항목 */
+  missions?: Mission[]
 }
 
 export interface Config {
@@ -104,6 +119,7 @@ export interface BonusState extends GameBase {
   type: 'bonus'
   revealed: boolean
   question: string
+  category?: string
   answer: string | null
 }
 
@@ -111,7 +127,33 @@ export interface SimpleState extends GameBase {
   type: 'simple'
 }
 
-export type GameState = CulpritState | VoiceState | BonusState | SimpleState
+export interface TallyState extends GameBase {
+  type: 'tally'
+  values: number[]
+}
+
+export interface VersusState extends GameBase {
+  type: 'versus'
+  mine: number[]
+  theirs: number[]
+}
+
+export interface DrawState extends GameBase {
+  type: 'draw'
+  drawn: number[]
+  current: number | null
+  revealed: boolean
+  mission: Mission | null
+}
+
+export type GameState =
+  | CulpritState
+  | VoiceState
+  | BonusState
+  | SimpleState
+  | TallyState
+  | VersusState
+  | DrawState
 
 export interface PrizeLog {
   id: number
@@ -131,8 +173,10 @@ export interface Meta {
   unit: string
   /** 총 구형 징역 (년) */
   demandTotal: number
-  /** 기각시켜 확정된 징역 (년) */
+  /** 기각되어 확정된 징역 (년) */
   demandStanding: number
+  /** 최대치까지 남은 금액 (노역으로 충당할 몫) */
+  shortfall: number
 }
 
 export interface AppState {
