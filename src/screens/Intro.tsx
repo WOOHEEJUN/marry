@@ -76,9 +76,13 @@ export default function Intro({ config }: { config: Config }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="txt-court mt-[0.4vh] text-[1.3vw] tracking-[0.4em] text-brass-300"
+          className="txt-court mt-[0.4vh] text-center text-[1.3vw] tracking-[0.35em] text-brass-300"
         >
-          {config.court.room} · {config.court.caseNo}
+          {config.court.name || ''} {config.court.room}
+          <div className="text-[1vw] tracking-[0.2em] text-white/45">
+            사건번호 {config.court.caseNo}
+            {config.court.caseName ? ` · ${config.court.caseName}` : ''}
+          </div>
         </motion.div>
 
         {/* 개정 선언 */}

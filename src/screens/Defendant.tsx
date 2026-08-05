@@ -41,8 +41,16 @@ export default function Defendant({ state, config }: { state: AppState; config: 
           transition={{ type: 'spring', stiffness: 150, damping: 16 }}
           className="shrink-0"
         >
-          <div className="frame-gold relative" style={{ width: '26vw', height: '44vh' }}>
-            <PhotoBox src={d.photo} label="피고인 사진" className="h-full w-full" />
+          <div
+            className="frame-gold relative flex items-center justify-center"
+            style={{ width: '34vw', height: '42vh', background: '#150b05' }}
+          >
+            <PhotoBox
+              src={d.photo}
+              label="피고인 사진"
+              fit="contain"
+              className="h-full w-full"
+            />
           </div>
           <Plaque className="mt-[0.8vh] w-full py-[0.4vh] text-center">
             <div className="txt-court text-[1.5vw] leading-none text-[#2a1509]">

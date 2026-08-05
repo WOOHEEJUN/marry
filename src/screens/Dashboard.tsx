@@ -82,7 +82,7 @@ export default function Dashboard({ state, config }: { state: AppState; config: 
             공 판 진 행 표
           </h1>
           <div className="txt-court mt-[0.2vh] text-[0.95vw] tracking-[0.3em] text-brass-300">
-            {config.court.room} · {config.court.caseNo}
+            {config.court.name || ''} · {config.court.caseNo}
           </div>
         </div>
         <Scales size="3.4vw" />

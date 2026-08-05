@@ -17,7 +17,10 @@ export default function GameCulprit({
 
   const ev = (gc.evidences || [])[g.round % (gc.evidences?.length || 1)]
   const people = config.prosecutors
-  const cols = Math.min(people.length, 7)
+  // 인원이 많으면 두 줄로 나누고 카드 높이를 줄인다
+  const cols = people.length > 7 ? Math.ceil(people.length / 2) : people.length
+  const rows = Math.ceil(people.length / cols)
+  const cardH = rows > 1 ? '15vh' : '24vh'
 
   return (
     <CourtFrame state={state} config={config} gc={gc} g={g} compactHead>
@@ -108,7 +111,7 @@ export default function GameCulprit({
                   background: '#241409',
                 }}
               >
-                <PhotoBox src={p.photo} label={p.name} className="w-full" style={{ height: '24vh' }} />
+                <PhotoBox src={p.photo} label={p.name} className="w-full" style={{ height: cardH }} />
 
                 <div
                   className="tex-brass border-t-[3px] border-[#170c04] py-[0.25vh] text-center"

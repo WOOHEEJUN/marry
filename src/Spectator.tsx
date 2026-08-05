@@ -43,7 +43,7 @@ export default function Spectator() {
 
   return (
     <div className="tex-hall tex-noise relative min-h-full pb-12">
-      <FxLayer fx={fx} />
+      <FxLayer fx={fx} cry={config.defendant.cryPhoto} />
 
       {/* 헤더 */}
       <div className="relative border-b-[3px] border-[#170c04] bg-[#150b05]/85 px-4 pb-3 pt-4 text-center">

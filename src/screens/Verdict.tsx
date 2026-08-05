@@ -1,177 +1,216 @@
 import { motion } from 'framer-motion'
-import { RollingNumber, Gavel, Emblem } from '../fx'
-import type { AppState, Config } from '../types'
+import { RollingNumber, CourtEmblem } from '../fx'
+import type { AppState, Config, GameConfig } from '../types'
 
-export default function Verdict({ state, config }: { state: AppState; config: Config }) {
+/**
+ * 판결문 — 실제 인쇄 판결문 양식을 그대로 재현한다.
+ * 흰 종이 + 굵은 고딕, 장식은 최소화.
+ */
+export default function Verdict({ state, config, print }: { state: AppState; config: Config; print?: boolean }) {
   const m = state.meta
   const earned = state.prize.earned
-  const rejected = m.totalGames - m.cleared
+  const mains = config.games.filter((g) => !g.bonus)
+  const ladder = config.prize.ladder
+
+  // 각 공소사실이 인용될 때 오르는 금액 (사다리 증분)
+  const step = (i: number) => (ladder[i] ?? 0) - (i > 0 ? (ladder[i - 1] ?? 0) : 0)
+
+  const rows: { charge: string; amount: string; accepted: 'grant' | 'reject' | 'none' }[] = [
+    ...mains.map((gc: GameConfig, i) => {
+      const g = state.games[gc.id]
+      return {
+        charge: gc.charge || gc.title,
+        amount: `${step(i)}${m.unit}`,
+        accepted: g?.cleared ? ('grant' as const) : g?.failed ? ('reject' as const) : ('none' as const),
+      }
+    }),
+    ...(config.court.extraCharges || []).map((c) => ({
+      charge: c,
+      amount: '—',
+      accepted: 'none' as const,
+    })),
+  ]
 
   return (
     <div
       className="tv-root flex items-center justify-center"
-      style={{
-        background: 'radial-gradient(ellipse at center, #2a1a08 0%, #150b05 55%, #000 100%)',
-      }}
+      style={{ background: print ? '#fff' : 'radial-gradient(ellipse at center,#2a1a08,#150b05 55%,#000)' }}
     >
-      {/* 금빛 광선 */}
-      <div className="anim-spin-slow pointer-events-none absolute left-1/2 top-1/2 h-[230vh] w-[230vh] -translate-x-1/2 -translate-y-1/2 opacity-[0.12]">
-        <div
-          className="h-full w-full"
-          style={{
-            background:
-              'repeating-conic-gradient(from 0deg, #c9a227 0deg 7deg, transparent 7deg 18deg)',
-          }}
-        />
-      </div>
+      {!print && (
+        <div className="anim-spin-slow pointer-events-none absolute left-1/2 top-1/2 h-[230vh] w-[230vh] -translate-x-1/2 -translate-y-1/2 opacity-[0.1]">
+          <div
+            className="h-full w-full"
+            style={{
+              background:
+                'repeating-conic-gradient(from 0deg,#c9a227 0deg 7deg,transparent 7deg 18deg)',
+            }}
+          />
+        </div>
+      )}
 
-      {Array.from({ length: 24 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="pointer-events-none absolute text-[1.4vw]"
-          style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
-          animate={{ opacity: [0, 1, 0], scale: [0.4, 1.2, 0.4] }}
-          transition={{ duration: 2 + Math.random() * 2, repeat: Infinity, delay: Math.random() * 3 }}
-        >
-          ✨
-        </motion.div>
-      ))}
-
-      {/* 판결문 */}
       <motion.div
-        initial={{ scale: 0.72, opacity: 0, rotateX: 26 }}
-        animate={{ scale: 1, opacity: 1, rotateX: 0 }}
-        transition={{ type: 'spring', stiffness: 90, damping: 16 }}
-        className="tex-paper relative flex flex-col items-center px-[4.5vw] py-[2.4vh]"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 17 }}
+        className="relative flex flex-col items-center bg-white px-[4vw] py-[2vh]"
         style={{
-          width: '74vw',
-          height: '90vh',
-          border: '12px solid transparent',
-          borderImage:
-            'linear-gradient(140deg,#fff3c4,#c9a227 25%,#6d4f06 50%,#ffd97a 75%,#8a6508) 1',
-          boxShadow: '0 30px 90px rgba(0,0,0,.9), 0 0 80px rgba(201,162,39,.3)',
+          width: '78vw',
+          height: '94vh',
+          color: '#111',
+          fontFamily: "'Noto Sans KR', sans-serif",
+          boxShadow: '0 26px 80px rgba(0,0,0,.9)',
         }}
       >
-        <div className="pointer-events-none absolute inset-[9px] border-[3px] border-[#8a6508]/45" />
-        <div className="pointer-events-none absolute inset-[16px] border border-[#8a6508]/30" />
-
-        {/* 워터마크 */}
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.045]"
-          style={{ fontSize: '24vw' }}
-        >
-          ⚖
-        </div>
-
         {/* 머리 */}
-        <div className="flex items-center gap-[1.5vw]">
-          <Emblem size="4.4vw" label="법 원" />
-          <div className="text-center">
-            <div className="txt-court text-[1.1vw] tracking-[0.45em] text-[#8a6508]">
-              {config.court.room}
-            </div>
-            <h1
-              className="txt-court text-[5.4vw] leading-none text-[#2a1509]"
-              style={{ letterSpacing: '0.14em' }}
-            >
-              판 결 문
-            </h1>
-            <div className="txt-num mt-[0.2vh] text-[1.15vw] tracking-[0.25em] text-[#8a6508]">
-              {config.court.caseNo}
-            </div>
+        <CourtEmblem size="6.4vh" />
+        <div className="mt-[0.3vh] text-center" style={{ fontWeight: 900 }}>
+          <div className="text-[2.5vw] leading-tight">{config.court.name || '모시래 지방법원'}</div>
+          <div className="text-[2.2vw] leading-tight tracking-[0.5em]">판 결</div>
+          <div className="text-[1.35vw] leading-tight">
+            [사건번호: {config.court.caseNo}
+            {config.court.caseName ? ` / ${config.court.caseName}` : ''}]
           </div>
-          <Emblem size="4.4vw" label="법 원" />
         </div>
 
-        <div className="mt-[1.4vh] h-[3px] w-full bg-[#8a6508]/45" />
+        <div className="mt-[1.2vh] text-[2.4vw]" style={{ fontWeight: 900, letterSpacing: '0.1em' }}>
+          피 고 인 : &nbsp;{config.defendant.name}
+        </div>
 
-        {/* 피고인 */}
-        <div className="mt-[1.2vh] flex w-full items-baseline gap-[1.5vw]">
-          <span className="txt-court text-[1.5vw] tracking-[0.3em] text-[#8a6508]">피 고 인</span>
-          <span className="txt-court text-[2.6vw] leading-none text-[#2a1509]">
-            {config.defendant.name}
-          </span>
-          <span className="txt-court text-[1.2vw] text-[#4a3a22]">
-            ({config.defendant.job})
-          </span>
+        {/* 혐의 표 */}
+        <div className="mt-[1.4vh] w-full px-[3vw]">
+          <div
+            className="grid items-end pb-[0.5vh] text-[1.35vw]"
+            style={{ gridTemplateColumns: '1.7fr 1fr 0.6fr', fontWeight: 900 }}
+          >
+            <div>혐 의 (죄 목)</div>
+            <div className="text-center">이행 금액</div>
+            <div className="text-center">수용여부</div>
+          </div>
+
+          {rows.map((r, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -14 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25 + i * 0.09 }}
+              className="grid items-center py-[0.42vh] text-[1.45vw]"
+              style={{ gridTemplateColumns: '1.7fr 1fr 0.6fr', fontWeight: 700 }}
+            >
+              <div className="truncate">{r.charge}</div>
+
+              <div className="flex items-baseline justify-center gap-[0.4vw]">
+                <span style={{ fontWeight: 900 }}>₩</span>
+                <span
+                  className="inline-block text-center"
+                  style={{
+                    minWidth: '7vw',
+                    borderBottom: '2px solid #111',
+                    fontWeight: 900,
+                    color: r.accepted === 'grant' ? '#0b7a3b' : '#111',
+                  }}
+                >
+                  {r.accepted === 'grant' ? r.amount : r.accepted === 'reject' ? '0' : ''}
+                </span>
+              </div>
+
+              <div className="text-center" style={{ fontWeight: 900 }}>
+                [
+                <span
+                  className="inline-block text-center"
+                  style={{
+                    minWidth: '3.2vw',
+                    color:
+                      r.accepted === 'grant' ? '#0b7a3b' : r.accepted === 'reject' ? '#c0392b' : '#111',
+                  }}
+                >
+                  {r.accepted === 'grant' ? '인용' : r.accepted === 'reject' ? '기각' : ''}
+                </span>
+                ]
+              </div>
+            </motion.div>
+          ))}
         </div>
 
         {/* 주문 */}
-        <div className="mt-[1.4vh] w-full">
-          <div className="txt-court text-[1.7vw] tracking-[0.5em] text-[#8a6508]">주 문</div>
-          <div className="mt-[0.6vh] space-y-[0.5vh] pl-[1.5vw]">
-            <div className="txt-court text-[1.9vw] leading-snug text-[#2a1509]">
-              一. 피고인의 항변 중 <b className="text-[#1f6d3c]">{m.cleared}건</b>을 인용하고,{' '}
-              <b className="text-[#a3200f]">{rejected}건</b>을 기각한다.
-            </div>
-            <div className="txt-court text-[1.9vw] leading-snug text-[#2a1509]">
-              二. 기각된 공소사실에 따라 징역{' '}
-              <b className="text-[#a3200f]">{m.demandStanding}년</b>을 선고한다.
-            </div>
-            <div className="txt-court text-[1.9vw] leading-snug text-[#2a1509]">
-              三. 피고인에게 아래 적립금을 지급함이 상당하다.
-            </div>
+        <div className="mt-[1.4vh] w-full px-[3vw] text-center">
+          <div className="text-[1.9vw]" style={{ fontWeight: 900, letterSpacing: '0.35em' }}>
+            【 주 &nbsp;&nbsp;문 】
+          </div>
+          <div className="mt-[0.4vh] text-[1.5vw] leading-snug" style={{ fontWeight: 800 }}>
+            "피고인 {config.defendant.name}은 상기 상당부분의 혐의에 대한 유죄가 인정된다.
+            <br />
+            이에 따라{' '}
+            <span style={{ color: '#f2705e' }}>'무기징역급의 행복한 결혼생활'</span>과
+            <br />
+            최종집행이행금 상당의 물품을 룸메들로부터 수령받을 것을 명한다."
           </div>
         </div>
 
-        {/* 적립금 */}
-        <div className="mt-[1.2vh] flex w-full flex-col items-center">
-          <div className="txt-court text-[1.3vw] tracking-[0.4em] text-[#8a6508]">
-            최 종 적 립 금
+        {/* 최종 금액 */}
+        <div className="mt-[1.2vh] flex flex-col items-center">
+          <div className="text-[1.8vw]" style={{ fontWeight: 900, letterSpacing: '0.3em' }}>
+            【최 종 집 행 이 행 금 】
           </div>
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-full bg-[#c9a227]/30 blur-2xl" />
-            <div
-              className="txt-num relative text-[9.5vw] leading-none"
-              style={{
-                background: 'linear-gradient(180deg,#6d4f06,#c9a227 32%,#ffd97a 56%,#6d4f06 100%)',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                color: 'transparent',
-                filter: 'drop-shadow(0 3px 0 rgba(255,255,255,.65))',
-              }}
+          <div className="mt-[0.3vh] flex items-center gap-[1vw]">
+            <span className="text-[3.4vw]" style={{ fontWeight: 300, color: '#111' }}>
+              |
+            </span>
+            <span className="text-[3.4vw]" style={{ fontWeight: 900 }}>
+              ₩
+            </span>
+            <motion.span
+              className="txt-num text-[6.4vw] leading-none"
+              style={{ fontWeight: 900, minWidth: '12vw', textAlign: 'center' }}
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
             >
               <RollingNumber value={earned} duration={2200} />
-              <span className="text-[3.6vw]">{m.unit}</span>
-            </div>
+            </motion.span>
+            <span className="text-[2.2vw]" style={{ fontWeight: 900 }}>
+              {m.unit}
+            </span>
+            <span className="text-[3.4vw]" style={{ fontWeight: 300 }}>
+              |
+            </span>
           </div>
-          <div className="txt-court text-[1.15vw] text-[#4a3a22]">
-            최대 {m.maxTotal}
-            {m.unit} 중 {m.maxTotal > 0 ? Math.round((earned / m.maxTotal) * 100) : 0}% 확보 ·
-            총 구형 {m.demandTotal}년
+          <div className="text-[1.05vw]" style={{ color: '#666', fontWeight: 700 }}>
+            인용 {m.cleared} / {m.totalGames}건 · 최대 {m.maxTotal}
+            {m.unit}
           </div>
         </div>
 
-        {/* 하단 */}
-        <div className="mt-auto flex w-full items-end justify-between">
-          <div className="txt-court text-[1.4vw] text-[#4a3a22]">
-            {config.court.weddingDate.replace(/-/g, '. ')}
-            <div className="text-[1vw] opacity-70">선고일</div>
+        {/* 서명 */}
+        <div className="mt-auto w-full px-[5vw] pb-[0.5vh]">
+          <div className="flex items-baseline gap-[1.2vw] text-[1.6vw]" style={{ fontWeight: 900 }}>
+            <span style={{ letterSpacing: '0.2em' }}>재 판 장 :</span>
+            <span className="text-[1.9vw]" style={{ letterSpacing: '0.35em' }}>
+              {config.court.judge}
+            </span>
           </div>
-
-          <div className="flex items-center gap-[1.4vw]">
-            <div className="anim-bob">
-              <Gavel size="5.5vw" />
-            </div>
-            <div className="txt-court text-center text-[1.8vw] text-[#2a1509]">
-              재판장 <span className="text-[2.2vw]">{config.witness.name}</span>
-              <div className="text-[0.95vw] opacity-60">평생 감독 담당</div>
-            </div>
-            <motion.div
-              initial={{ scale: 3.4, opacity: 0, rotate: -30 }}
-              animate={{ scale: 1, opacity: 0.9, rotate: -13 }}
-              transition={{ delay: 1.3, type: 'spring', stiffness: 200, damping: 12 }}
-              className="flex items-center justify-center rounded-md border-[6px] border-[#c0392b]"
-              style={{ width: '8.5vw', height: '8.5vw', color: '#c0392b' }}
-            >
-              <div className="txt-court text-center text-[1.5vw] leading-tight">
-                법원
-                <br />
-                직인
-              </div>
-            </motion.div>
+          <div className="mt-[0.3vh] flex items-baseline gap-[1.2vw] text-[1.6vw]" style={{ fontWeight: 900 }}>
+            <span style={{ letterSpacing: '0.2em' }}>담당검사 :</span>
+            <span className="flex-1 text-[1.5vw] leading-snug">
+              {config.prosecutors.map((p) => p.name).join(' ')}
+            </span>
           </div>
         </div>
+
+        {/* 직인 */}
+        <motion.div
+          initial={{ scale: 3.4, opacity: 0, rotate: -30 }}
+          animate={{ scale: 1, opacity: 0.88, rotate: -13 }}
+          transition={{ delay: 1.5, type: 'spring', stiffness: 200, damping: 12 }}
+          className="absolute bottom-[3vh] right-[5vw] flex items-center justify-center rounded-md border-[6px] border-[#c0392b]"
+          style={{ width: '8vw', height: '8vw', color: '#c0392b' }}
+        >
+          <div className="text-center text-[1.4vw] leading-tight" style={{ fontWeight: 900 }}>
+            모시래
+            <br />
+            지방법원
+            <br />
+            직인
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   )

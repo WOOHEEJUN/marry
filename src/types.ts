@@ -63,15 +63,23 @@ export interface GameConfig {
 export interface Config {
   court: {
     title: string
+    /** 법원 이름 (예: 모시래 지방법원) */
+    name?: string
     caseNo: string
+    /** 사건명 (예: 독단 행복추구 사건) */
+    caseName?: string
     room: string
     date: string
     weddingDate: string
     judge: string
+    /** 판결문에만 실리는 추가 죄목 (게임과 무관) */
+    extraCharges?: string[]
   }
   defendant: {
     name: string
     photo?: string
+    /** 기각 연출용 오열 사진 */
+    cryPhoto?: string
     birth?: string
     job?: string
     address?: string

@@ -233,6 +233,84 @@ export function Emblem({ size = '7vw', label = '법 원' }: { size?: string; lab
   )
 }
 
+/** 판결문용 법원 문장 (월계관 + M) */
+export function CourtEmblem({ size = '7vh' }: { size?: string }) {
+  return (
+    <svg viewBox="0 0 220 220" style={{ height: size, width: 'auto' }}>
+      {/* 월계관 */}
+      {[-1, 1].map((s) => (
+        <g key={s} transform={`translate(110,118) scale(${s},1)`}>
+          <path
+            d="M0 74 C-46 66 -74 30 -76 -22 C-77 -52 -66 -78 -48 -92"
+            fill="none"
+            stroke="#111"
+            strokeWidth="7"
+            strokeLinecap="round"
+          />
+          {Array.from({ length: 8 }).map((_, i) => {
+            const t = i / 7
+            const x = -18 - Math.sin(t * 1.5) * 56
+            const y = 56 - t * 140
+            return (
+              <ellipse
+                key={i}
+                cx={x}
+                cy={y}
+                rx="13"
+                ry="6.5"
+                fill="#111"
+                transform={`rotate(${-58 + t * 66} ${x} ${y})`}
+              />
+            )
+          })}
+        </g>
+      ))}
+      {/* 상단 왕관 */}
+      <path d="M96 22 L110 6 L124 22 L118 34 L102 34 Z" fill="#111" />
+      <circle cx="110" cy="4" r="5" fill="#111" />
+      {/* M */}
+      <text
+        x="110"
+        y="140"
+        textAnchor="middle"
+        fill="#1f6b3a"
+        stroke="#111"
+        strokeWidth="4"
+        paintOrder="stroke"
+        fontSize="112"
+        fontWeight="900"
+        fontFamily="Georgia, 'Times New Roman', serif"
+      >
+        M
+      </text>
+      <text
+        x="110"
+        y="52"
+        textAnchor="middle"
+        fill="#1f4fa8"
+        fontSize="19"
+        fontWeight="900"
+        letterSpacing="2"
+        fontFamily="Georgia, serif"
+      >
+        LEADER
+      </text>
+      <text
+        x="110"
+        y="182"
+        textAnchor="middle"
+        fill="#1f6b3a"
+        fontSize="15"
+        fontWeight="900"
+        letterSpacing="1"
+        fontFamily="Georgia, serif"
+      >
+        303 304
+      </text>
+    </svg>
+  )
+}
+
 /** 황동 명판 */
 export function Plaque({
   children,
@@ -626,20 +704,38 @@ function GrantOverlay({
   )
 }
 
-/** 기각 선고 */
-function RejectFlash({ onDone }: { onDone: () => void }) {
+/** 기각 선고 — 붉은 섬광 + 피고인 오열 */
+function RejectFlash({ cry, onDone }: { cry?: string; onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 1500)
+    const t = setTimeout(onDone, cry ? 2600 : 1500)
     return () => clearTimeout(t)
-  }, [onDone])
+  }, [onDone, cry])
   return (
-    <motion.div
-      className="pointer-events-none fixed inset-0 z-[94]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: [0, 0.6, 0.15, 0.5, 0] }}
-      transition={{ duration: 1.4, times: [0, 0.1, 0.3, 0.5, 1] }}
-      style={{ background: 'radial-gradient(circle, rgba(192,57,43,.35), rgba(60,6,6,.92))' }}
-    />
+    <div className="pointer-events-none fixed inset-0 z-[94] flex items-center justify-center overflow-hidden">
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.7, 0.2, 0.55, 0.25] }}
+        transition={{ duration: 1.4, times: [0, 0.1, 0.3, 0.5, 1] }}
+        style={{ background: 'radial-gradient(circle, rgba(192,57,43,.4), rgba(60,6,6,.94))' }}
+      />
+      {cry && (
+        <motion.img
+          src={cry}
+          alt=""
+          className="relative"
+          style={{ width: '46vh', filter: 'drop-shadow(0 20px 50px rgba(0,0,0,.85))' }}
+          initial={{ scale: 0.2, opacity: 0, rotate: -12 }}
+          animate={{
+            scale: [0.2, 1.15, 1, 1, 0.9],
+            opacity: [0, 1, 1, 1, 0],
+            rotate: [-12, 4, -4, 3, 0],
+            y: [60, 0, 0, 0, 30],
+          }}
+          transition={{ duration: 2.5, times: [0, 0.18, 0.35, 0.75, 1] }}
+        />
+      )}
+    </div>
   )
 }
 
@@ -702,7 +798,7 @@ function Countdown({ onDone }: { onDone: () => void }) {
   )
 }
 
-export function FxLayer({ fx }: { fx: Fx | null }) {
+export function FxLayer({ fx, cry }: { fx: Fx | null; cry?: string }) {
   const [items, setItems] = useState<Fx[]>([])
   const seen = useRef('')
 
@@ -743,7 +839,7 @@ export function FxLayer({ fx }: { fx: Fx | null }) {
             return <Countdown key={f._id} onDone={() => drop(f._id)} />
           case 'fail':
           case 'love-lose':
-            return <RejectFlash key={f._id} onDone={() => drop(f._id)} />
+            return <RejectFlash key={f._id} cry={cry} onDone={() => drop(f._id)} />
           default:
             return null
         }
@@ -761,15 +857,23 @@ export function PhotoBox({
   label = '사진',
   className = '',
   style,
+  fit = 'cover',
 }: {
   src?: string
   label?: string
   className?: string
   style?: React.CSSProperties
+  fit?: 'cover' | 'contain'
 }) {
   if (src) {
     return (
-      <img src={src} alt={label} className={`object-cover ${className}`} style={style} draggable={false} />
+      <img
+        src={src}
+        alt={label}
+        className={`${fit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+        style={style}
+        draggable={false}
+      />
     )
   }
   return (

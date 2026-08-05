@@ -89,7 +89,7 @@ export default function Tv({ role = 'tv' }: { role?: Role }) {
         {screen}
       </div>
 
-      <FxLayer fx={fx} />
+      <FxLayer fx={fx} cry={config.defendant.cryPhoto} />
 
       {/* 재판장 공지 */}
       <AnimatePresence>

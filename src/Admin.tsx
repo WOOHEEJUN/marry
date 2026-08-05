@@ -815,14 +815,28 @@ export default function Admin() {
             <Card title="재판 정보" defaultOpen={false}>
               <div className="ops-grid c2">
                 <Field
-                  label="사건 제목"
-                  value={cfg.court.title}
-                  onChange={(v) => up((c) => void (c.court.title = v))}
+                  label="법원 이름"
+                  hint="판결문 머리"
+                  value={cfg.court.name || ''}
+                  onChange={(v) => up((c) => void (c.court.name = v))}
                 />
+                <Field
+                  label="재판장"
+                  value={cfg.court.judge}
+                  onChange={(v) => up((c) => void (c.court.judge = v))}
+                />
+              </div>
+              <div className="ops-grid c2">
                 <Field
                   label="사건번호"
                   value={cfg.court.caseNo}
                   onChange={(v) => up((c) => void (c.court.caseNo = v))}
+                />
+                <Field
+                  label="사건명"
+                  hint="예: 독단 행복추구 사건"
+                  value={cfg.court.caseName || ''}
+                  onChange={(v) => up((c) => void (c.court.caseName = v))}
                 />
               </div>
               <div className="ops-grid c2">
@@ -839,6 +853,35 @@ export default function Admin() {
                   onChange={(v) => up((c) => void (c.court.weddingDate = v))}
                 />
               </div>
+
+              <div className="ops-sub">판결문 전용 죄목</div>
+              <div className="ops-hint">게임과 무관하게 판결문 표에만 실리는 항목입니다.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(cfg.court.extraCharges || []).map((ch, i) => (
+                  <RowItem
+                    key={i}
+                    onDelete={() => up((c) => void c.court.extraCharges!.splice(i, 1))}
+                  >
+                    <input
+                      className="ops-input"
+                      value={ch}
+                      onChange={(e) => up((c) => void (c.court.extraCharges![i] = e.target.value))}
+                    />
+                  </RowItem>
+                ))}
+              </div>
+              <Btn
+                kind="ghost"
+                block
+                onClick={() =>
+                  up((c) => {
+                    if (!c.court.extraCharges) c.court.extraCharges = []
+                    c.court.extraCharges.push('')
+                  })
+                }
+              >
+                죄목 추가
+              </Btn>
             </Card>
 
             <Card title="피고인 · 증인" defaultOpen={false}>
@@ -857,9 +900,15 @@ export default function Admin() {
               </div>
               <Field
                 label="피고인 사진 URL"
-                hint="/img/groom.jpg 형태"
+                hint="/img/defendant.png 형태"
                 value={cfg.defendant.photo || ''}
                 onChange={(v) => up((c) => void (c.defendant.photo = v))}
+              />
+              <Field
+                label="오열 사진 URL"
+                hint="기각 선고 연출에 사용"
+                value={cfg.defendant.cryPhoto || ''}
+                onChange={(v) => up((c) => void (c.defendant.cryPhoto = v))}
               />
               <Field
                 label="증인 사진 URL"
