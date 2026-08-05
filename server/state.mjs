@@ -1,11 +1,13 @@
 // ══════════════════════════════════════════════════════════════
-// 게임 상태 + 액션 리듀서 (서버가 유일한 진실)
+// 재판 상태 + 액션 리듀서 (서버가 유일한 진실)
 //
-// 상금 모델: 라운드당 적립 없음.
-//   게임을 N개 클리어하면 누적 금액이 ladder[N-1] 로 '도달'한다.
-//   예) ladder = [30, 50, 70, 100, 130]
-//       1개 클리어 → 30만원 / 3개 클리어 → 70만원 / 5개 전부 → 130만원
-//   보너스 게임으로 추가 획득해 maxTotal(150만원)까지 채울 수 있다.
+// 세계관: 검사들이 피고인에게 공소사실을 하나씩 제기하고 징역을 구형한다.
+//   게임 성공 → 피고인의 항변이 '인용' → 적립금 상승
+//   게임 실패 → 항변 '기각' → 구형한 징역이 그대로 확정
+//
+// 적립금 모델: 라운드당 적립 없음.
+//   공소사실을 N건 인용받으면 누적 금액이 ladder[N-1] 로 '도달'한다.
+//   증인 신문(직권)으로 추가 획득해 maxTotal 까지 채울 수 있다.
 // ══════════════════════════════════════════════════════════════
 
 let seq = 1
@@ -138,24 +140,44 @@ function settle(state, config, id, fx) {
   const need = gc.clearThreshold ?? 1
 
   if (wins >= need) {
-    g.cleared = true
-    const n = clearedCount(state, config)
-    const delta = syncPrize(state, config, `${gc.no} 성공 — 누적 ${ladderAmount(n, config)}${config.prize.unit}`)
-    fx.push({
-      kind: 'clear',
-      title: `${gc.no} · ${gc.title}`,
-      amount: delta,
-      total: state.prize.earned,
-      unit: config.prize.unit,
-      step: n,
-    })
+    grant(state, config, id, fx)
   } else if (done) {
-    g.failed = true
-    note(state, `${gc.no} 실패 — 부활 기회 필요`)
-    fx.push({ kind: 'fail' })
-    fx.push({ kind: 'stamp', text: '집행 실패', tone: 'red' })
-    fx.push({ kind: 'revive-offer' })
+    reject(state, config, id, fx)
   }
+}
+
+/** 인용 — 피고인의 항변이 받아들여짐 */
+function grant(state, config, id, fx) {
+  const g = state.games[id]
+  const gc = findGame(config, id)
+  g.failed = false
+  g.cleared = true
+  const n = clearedCount(state, config)
+  const delta = syncPrize(
+    state,
+    config,
+    `${gc.no} 인용 — 누적 ${ladderAmount(n, config)}${config.prize.unit}`
+  )
+  fx.push({
+    kind: 'clear',
+    title: `${gc.no}`,
+    subtitle: gc.charge || gc.title,
+    amount: delta,
+    total: state.prize.earned,
+    unit: config.prize.unit,
+    step: n,
+  })
+}
+
+/** 기각 — 구형한 징역이 그대로 확정 */
+function reject(state, config, id, fx) {
+  const g = state.games[id]
+  const gc = findGame(config, id)
+  g.failed = true
+  note(state, `${gc.no} 기각 — 징역 ${gc.demand ?? 0}년 확정`)
+  fx.push({ kind: 'fail' })
+  fx.push({ kind: 'stamp', text: '기 각', tone: 'red' })
+  fx.push({ kind: 'revive-offer' })
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -177,50 +199,31 @@ export function reduce(state, config, action) {
       state.banner = action.text || null
       break
 
-    // ── 게임 판정 (simple: 한 방에 성공/실패) ──
+    // ── 선고 (인용 / 기각) ──
     case 'game.clear': {
       if (g && gc && !g.cleared) {
-        g.failed = false
         if (g.results.length === 0) g.results = ['win']
         else g.results = g.results.map((r, i) => (i === 0 && r === 'pending' ? 'win' : r))
-        g.cleared = true
-        const n = clearedCount(state, config)
-        const delta = syncPrize(
-          state,
-          config,
-          `${gc.no} 성공 — 누적 ${ladderAmount(n, config)}${config.prize.unit}`
-        )
-        fx.push({
-          kind: 'clear',
-          title: `${gc.no} · ${gc.title}`,
-          amount: delta,
-          total: state.prize.earned,
-          unit: config.prize.unit,
-          step: n,
-        })
+        grant(state, config, id, fx)
       }
       break
     }
     case 'game.fail': {
       if (g && gc && !g.cleared) {
-        g.failed = true
         if (g.results.length === 0) g.results = ['lose']
-        note(state, `${gc.no} 실패 — 부활 기회 필요`)
-        fx.push({ kind: 'fail' })
-        fx.push({ kind: 'stamp', text: '집행 실패', tone: 'red' })
-        fx.push({ kind: 'revive-offer' })
+        reject(state, config, id, fx)
       }
       break
     }
     case 'game.reset': {
       if (g && gc) {
         state.games[id] = initGame(gc)
-        syncPrize(state, config, `${gc.no} 초기화`)
+        syncPrize(state, config, `${gc.no} 심리 재개`)
       }
       break
     }
 
-    // ── 부활: 실패한 게임을 다시 도전 가능하게 ──
+    // ── 재심: 기각된 공소사실을 다시 다툴 수 있게 ──
     case 'revive.grant': {
       const tg = state.games[action.gameId]
       const tc = findGame(config, action.gameId)
@@ -238,7 +241,7 @@ export function reduce(state, config, action) {
           tg.results = []
           tg.round = 0
         }
-        note(state, `${tc.no} 부활 — 재도전 기회 획득`)
+        note(state, `${tc.no} 재심 개시 — 재도전 기회 획득`)
         fx.push({ kind: 'revive' })
       }
       break
@@ -247,7 +250,7 @@ export function reduce(state, config, action) {
     // ── 보너스 상금 (천생연분 등으로 150까지 채우기) ──
     case 'prize.bonus': {
       state.prize.bonus = Math.max(0, (state.prize.bonus || 0) + action.amount)
-      const delta = syncPrize(state, config, action.label || '보너스 획득')
+      const delta = syncPrize(state, config, action.label || '재판부 직권 가산')
       if (delta > 0) fx.push({ kind: 'cash', amount: delta, unit: config.prize.unit })
       break
     }
@@ -277,8 +280,8 @@ export function reduce(state, config, action) {
         g.results[g.round] = action.win ? 'win' : 'lose'
         fx.push(
           action.win
-            ? { kind: 'stamp', text: '유 죄', tone: 'gold' }
-            : { kind: 'stamp', text: '무죄 석방', tone: 'blue' }
+            ? { kind: 'stamp', text: '적 중', tone: 'gold' }
+            : { kind: 'stamp', text: '불 발', tone: 'blue' }
         )
         settle(state, config, id, fx)
       }
@@ -318,7 +321,7 @@ export function reduce(state, config, action) {
         g.revealed = true
         g.results[g.round] = action.win ? 'win' : 'lose'
         if (action.win) fx.push({ kind: 'reveal-word' })
-        else fx.push({ kind: 'stamp', text: '감청 실패', tone: 'red' })
+        else fx.push({ kind: 'stamp', text: '진술 불명', tone: 'blue' })
         settle(state, config, id, fx)
       }
       break
@@ -368,7 +371,7 @@ export function reduce(state, config, action) {
         g.results[g.round] = action.win ? 'win' : 'lose'
         if (action.win) {
           fx.push({ kind: 'love-win' })
-          fx.push({ kind: 'stamp', text: '천생연분', tone: 'gold' })
+          fx.push({ kind: 'stamp', text: '진술 일치', tone: 'gold' })
         } else {
           fx.push({ kind: 'love-lose' })
         }
@@ -392,15 +395,23 @@ export function reduce(state, config, action) {
 // ══════════════════════════════════════════════════════════════
 function withMeta(state, config) {
   const n = clearedCount(state, config)
+  const mains = mainGames(config)
+  // 기각된 공소사실의 구형 년수가 그대로 확정 징역이 된다
+  const demandStanding = mains.reduce(
+    (a, g) => a + (state.games[g.id]?.failed ? (g.demand ?? 0) : 0),
+    0
+  )
   return {
     ...state,
     meta: {
       cleared: n,
-      totalGames: mainGames(config).length,
+      totalGames: mains.length,
       current: ladderAmount(n, config),
       next: ladderAmount(n + 1, config),
       maxTotal: config.prize.maxTotal,
       unit: config.prize.unit,
+      demandTotal: mains.reduce((a, g) => a + (g.demand ?? 0), 0),
+      demandStanding,
     },
   }
 }

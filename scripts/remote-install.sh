@@ -11,8 +11,8 @@ rm -f /tmp/marry.tar.gz
 if [ ! -f /opt/marry/config.json ]; then
   cp /opt/marry/config.default.json /opt/marry/config.json
   echo "  config.json 신규 생성"
-elif ! grep -q '"ladder"' /opt/marry/config.json; then
-  # 구버전 설정(라운드 적립 모델) → 사다리 모델로 마이그레이션.
+elif ! grep -q '"prosecutors"' /opt/marry/config.json; then
+  # 구버전 설정 → 현재 스키마(법정 컨셉)로 마이그레이션.
   # PIN 은 기존 값을 그대로 살린다.
   OLDPIN=$(grep -o '"controlPin"[[:space:]]*:[[:space:]]*"[^"]*"' /opt/marry/config.json | sed 's/.*"\([^"]*\)"$/\1/')
   cp /opt/marry/config.json "/opt/marry/config.backup.$(date +%s).json"

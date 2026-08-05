@@ -3,176 +3,269 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Fx } from './types'
 
 // ══════════════════════════════════════════════════════════════
-// 배경 레이어
+// 법정 배경
 // ══════════════════════════════════════════════════════════════
 
-export function Grunge({ tone = 'concrete' }: { tone?: 'concrete' | 'steel' | 'love' }) {
+/** 법정 전경 — 벽 + 조명 + 노이즈 + 비네트 */
+export function Hall({ tone = 'hall' }: { tone?: 'hall' | 'wood' | 'love' }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div
         className={
-          tone === 'steel'
-            ? 'absolute inset-0 tex-steel'
+          tone === 'wood'
+            ? 'tex-wood absolute inset-0'
             : tone === 'love'
               ? 'absolute inset-0'
-              : 'absolute inset-0 tex-concrete'
+              : 'tex-hall absolute inset-0'
         }
         style={
           tone === 'love'
             ? {
                 background:
-                  'radial-gradient(ellipse at 30% 20%, #ff6fb5 0%, #c9007a 40%, #4a0028 78%, #1a000e 100%)',
+                  'radial-gradient(ellipse at 50% 12%, #ff9ec4 0%, #d94f8a 34%, #6b1440 70%, #2a0616 100%)',
               }
             : undefined
         }
       />
+      <div className="tex-spot absolute inset-0" />
       <div className="tex-noise absolute inset-0" />
-      <div className="tex-scanlines absolute inset-0" />
       <div className="tex-vignette absolute inset-0" />
     </div>
   )
 }
 
-/** 경광등 — 좌우에서 빨강/파랑 번쩍 */
-export function SirenLights({ intensity = 1 }: { intensity?: number }) {
+/** 좌우 벨벳 커튼 */
+export function Curtains({ width = '13vw' }: { width?: string }) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="anim-siren-r absolute -left-[18%] top-1/2 h-[150vh] w-[65vw] -translate-y-1/2 rounded-full"
-        style={{
-          background: `radial-gradient(circle, rgba(225,6,0,${0.55 * intensity}) 0%, rgba(225,6,0,${0.2 * intensity}) 35%, transparent 68%)`,
-          filter: 'blur(30px)',
-        }}
-      />
-      <div
-        className="anim-siren-b absolute -right-[18%] top-1/2 h-[150vh] w-[65vw] -translate-y-1/2 rounded-full"
-        style={{
-          background: `radial-gradient(circle, rgba(0,71,255,${0.55 * intensity}) 0%, rgba(0,71,255,${0.2 * intensity}) 35%, transparent 68%)`,
-          filter: 'blur(30px)',
-        }}
-      />
-      {/* 회전 광선 */}
-      <div className="anim-spin-slow absolute left-1/2 top-1/2 h-[220vh] w-[220vh] -translate-x-1/2 -translate-y-1/2 opacity-[0.07]">
+    <>
+      {(['left', 'right'] as const).map((side) => (
         <div
-          className="h-full w-full"
+          key={side}
+          className="tex-curtain anim-curtain pointer-events-none absolute top-0 h-full"
           style={{
-            background:
-              'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,.9) 8deg, transparent 22deg, transparent 180deg, rgba(255,255,255,.7) 188deg, transparent 202deg, transparent 360deg)',
+            width,
+            [side]: 0,
+            transformOrigin: side === 'left' ? 'left center' : 'right center',
+            boxShadow:
+              side === 'left'
+                ? 'inset -22px 0 44px rgba(0,0,0,.75)'
+                : 'inset 22px 0 44px rgba(0,0,0,.75)',
           }}
-        />
-      </div>
-    </div>
-  )
-}
-
-/** 폴리스라인 테이프 */
-export function PoliceTape({
-  className = '',
-  rotate = -6,
-  height = 54,
-  text = 'POLICE LINE ★ DO NOT CROSS ★ 총각 신분 종료 ★ 접근 금지 ★',
-  speed = 'normal',
-}: {
-  className?: string
-  rotate?: number
-  height?: number
-  text?: string
-  speed?: 'normal' | 'fast' | 'none'
-}) {
-  const run = speed === 'none' ? '' : speed === 'fast' ? 'anim-marquee-fast' : 'anim-marquee'
-  return (
-    <div
-      className={`tape-strip pointer-events-none absolute flex items-center overflow-hidden ${className}`}
-      style={{ height, transform: `rotate(${rotate}deg)` }}
-    >
-      <div className={`flex ${run} shrink-0`}>
-        {[0, 1].map((k) => (
-          <div key={k} className="flex shrink-0">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <span
-                key={i}
-                className="tape-text shrink-0 px-6"
-                style={{ fontSize: height * 0.46, lineHeight: `${height}px` }}
-              >
-                {text}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** 감옥 창살 오버레이 */
-export function PrisonBars({ opacity = 0.55, drop = false }: { opacity?: number; drop?: boolean }) {
-  return (
-    <div
-      className={`bars pointer-events-none absolute inset-0 ${drop ? 'anim-bars-drop' : ''}`}
-      style={{ opacity }}
-    />
-  )
-}
-
-/** 쇠사슬 (SVG) */
-export function Chain({ className = '', vertical = false }: { className?: string; vertical?: boolean }) {
-  const links = 14
-  return (
-    <div className={`pointer-events-none absolute ${className}`}>
-      <div className={vertical ? 'flex flex-col items-center' : 'flex items-center'}>
-        {Array.from({ length: links }).map((_, i) => (
+        >
+          {/* 커튼 상단 봉 */}
           <div
-            key={i}
-            className={vertical ? '-mt-2 first:mt-0' : '-ml-2 first:ml-0'}
+            className="absolute left-0 top-0 h-[1.6vh] w-full"
             style={{
-              width: vertical ? 26 : 34,
-              height: vertical ? 34 : 26,
-              borderRadius: '50%',
-              border: '6px solid transparent',
-              borderImage:
-                'linear-gradient(140deg, #e8edf2 0%, #8b949c 30%, #3a4148 60%, #c3ccd4 100%) 1',
-              background: 'transparent',
-              boxShadow: '0 2px 5px rgba(0,0,0,.7)',
-              transform: i % 2 ? 'rotate(90deg) scale(.92)' : 'none',
+              background: 'linear-gradient(180deg,#ffd97a,#8a6508 60%,#4a3405)',
+              boxShadow: '0 2px 8px rgba(0,0,0,.8)',
             }}
           />
+          {/* 술 장식 */}
+          <div
+            className="absolute bottom-0 left-0 h-[2vh] w-full"
+            style={{
+              background:
+                'repeating-linear-gradient(90deg,#c9a227 0 6px,#8a6508 6px 12px)',
+              maskImage: 'linear-gradient(180deg,#000 40%,transparent 100%)',
+            }}
+          />
+        </div>
+      ))}
+    </>
+  )
+}
+
+/** 정의의 저울 */
+export function Scales({ size = '8vw', className = '' }: { size?: string; className?: string }) {
+  return (
+    <svg viewBox="0 0 200 190" style={{ width: size, height: 'auto' }} className={className}>
+      <defs>
+        <linearGradient id="sc-gold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff3c4" />
+          <stop offset="38%" stopColor="#ffd97a" />
+          <stop offset="70%" stopColor="#c9a227" />
+          <stop offset="100%" stopColor="#6d4f06" />
+        </linearGradient>
+      </defs>
+      {/* 기둥 */}
+      <rect x="94" y="34" width="12" height="118" fill="url(#sc-gold)" />
+      <ellipse cx="100" cy="160" rx="42" ry="11" fill="url(#sc-gold)" />
+      <ellipse cx="100" cy="154" rx="30" ry="8" fill="#8a6508" />
+      <circle cx="100" cy="28" r="10" fill="url(#sc-gold)" />
+      {/* 저울대 + 접시 */}
+      <g className="anim-scales">
+        <rect x="24" y="40" width="152" height="8" rx="4" fill="url(#sc-gold)" />
+        {[38, 162].map((cx, i) => (
+          <g key={i}>
+            <line x1={cx} y1="46" x2={cx - 22} y2="88" stroke="#c9a227" strokeWidth="3" />
+            <line x1={cx} y1="46" x2={cx + 22} y2="88" stroke="#c9a227" strokeWidth="3" />
+            <path
+              d={`M${cx - 30} 88 L${cx + 30} 88 L${cx + 20} 104 L${cx - 20} 104 Z`}
+              fill="url(#sc-gold)"
+              stroke="#6d4f06"
+              strokeWidth="2"
+            />
+          </g>
         ))}
-      </div>
+      </g>
+    </svg>
+  )
+}
+
+/** 판사봉 */
+export function Gavel({
+  size = '9vw',
+  strike = false,
+  className = '',
+}: {
+  size?: string
+  strike?: boolean
+  className?: string
+}) {
+  return (
+    <svg
+      viewBox="0 0 220 150"
+      style={{ width: size, height: 'auto' }}
+      className={`${strike ? 'anim-gavel' : ''} ${className}`}
+    >
+      <defs>
+        <linearGradient id="gv-wood" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#b87f4f" />
+          <stop offset="45%" stopColor="#714122" />
+          <stop offset="100%" stopColor="#2a1509" />
+        </linearGradient>
+        <linearGradient id="gv-brass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffe9a8" />
+          <stop offset="50%" stopColor="#c9a227" />
+          <stop offset="100%" stopColor="#6d4f06" />
+        </linearGradient>
+      </defs>
+      {/* 손잡이 */}
+      <rect
+        x="96"
+        y="52"
+        width="112"
+        height="17"
+        rx="8"
+        transform="rotate(28 96 52)"
+        fill="url(#gv-wood)"
+        stroke="#170c04"
+        strokeWidth="3"
+      />
+      {/* 머리 */}
+      <rect
+        x="18"
+        y="26"
+        width="86"
+        height="44"
+        rx="8"
+        fill="url(#gv-wood)"
+        stroke="#170c04"
+        strokeWidth="3"
+      />
+      <rect x="18" y="26" width="13" height="44" fill="url(#gv-brass)" stroke="#170c04" strokeWidth="3" />
+      <rect x="91" y="26" width="13" height="44" fill="url(#gv-brass)" stroke="#170c04" strokeWidth="3" />
+    </svg>
+  )
+}
+
+/** 법원 문장 */
+export function Emblem({ size = '7vw', label = '법 원' }: { size?: string; label?: string }) {
+  return (
+    <div className="relative flex flex-col items-center">
+      <svg viewBox="0 0 200 200" style={{ width: size, height: 'auto' }}>
+        <defs>
+          <linearGradient id="em-gold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff3c4" />
+            <stop offset="40%" stopColor="#ffd97a" />
+            <stop offset="100%" stopColor="#6d4f06" />
+          </linearGradient>
+        </defs>
+        <circle cx="100" cy="100" r="90" fill="#150b05" stroke="url(#em-gold)" strokeWidth="6" />
+        <circle cx="100" cy="100" r="76" fill="none" stroke="url(#em-gold)" strokeWidth="2.5" />
+        {/* 월계수 */}
+        {[-1, 1].map((s) => (
+          <g key={s} transform={`translate(100,108) scale(${s},1)`}>
+            <path
+              d="M0 44 C-26 34 -40 12 -40 -12"
+              fill="none"
+              stroke="url(#em-gold)"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+            {[0, 1, 2, 3, 4].map((i) => (
+              <ellipse
+                key={i}
+                cx={-13 - i * 7}
+                cy={30 - i * 11}
+                rx="9"
+                ry="5"
+                fill="url(#em-gold)"
+                transform={`rotate(${-32 - i * 8} ${-13 - i * 7} ${30 - i * 11})`}
+              />
+            ))}
+          </g>
+        ))}
+        <text
+          x="100"
+          y="86"
+          textAnchor="middle"
+          fill="url(#em-gold)"
+          fontSize="46"
+          fontWeight="800"
+          fontFamily="'Nanum Myeongjo',serif"
+        >
+          ⚖
+        </text>
+        <text
+          x="100"
+          y="126"
+          textAnchor="middle"
+          fill="url(#em-gold)"
+          fontSize="30"
+          fontWeight="800"
+          fontFamily="'Nanum Myeongjo',serif"
+        >
+          {label}
+        </text>
+      </svg>
     </div>
   )
 }
 
-/** 속보 자막 바 */
-export function NewsTicker({
-  label = '속보',
-  items,
-  tone = 'red',
+/** 황동 명판 */
+export function Plaque({
+  children,
+  className = '',
+  style,
 }: {
-  label?: string
-  items: string[]
-  tone?: 'red' | 'blue' | 'gold'
+  children: React.ReactNode
+  className?: string
+  style?: React.CSSProperties
 }) {
-  const bg =
-    tone === 'blue'
-      ? 'linear-gradient(180deg,#3d7bff,#0047ff)'
-      : tone === 'gold'
-        ? 'linear-gradient(180deg,#ffd75e,#b8860b)'
-        : 'linear-gradient(180deg,#ff4437,#a30300)'
-  const line = items.join('   ◆   ')
   return (
-    <div className="relative flex w-full items-stretch overflow-hidden border-y-4 border-black bg-black/90">
+    <div className={`plaque tex-brass anim-sheen relative overflow-hidden ${className}`} style={style}>
+      {children}
+    </div>
+  )
+}
+
+/** 하단 게시 자막 */
+export function CourtTicker({ label = '공지', items }: { label?: string; items: string[] }) {
+  const line = items.join('   ·   ')
+  return (
+    <div className="relative flex w-full items-stretch overflow-hidden border-y-[3px] border-[#170c04] bg-[#150b05]/95">
       <div
-        className="txt-head z-10 flex shrink-0 items-center px-5 text-[1.6vw] text-white"
-        style={{ background: bg, textShadow: '0 2px 4px rgba(0,0,0,.6)' }}
+        className="txt-court z-10 flex shrink-0 items-center px-5 text-[1.4vw] text-[#2a1509]"
+        style={{ background: 'linear-gradient(180deg,#ffd97a,#c9a227 60%,#8a6508)' }}
       >
-        <span className="anim-blink mr-2">●</span>
         {label}
       </div>
       <div className="relative flex flex-1 items-center overflow-hidden py-2">
         <div className="anim-marquee flex shrink-0 whitespace-nowrap">
           {[0, 1].map((k) => (
-            <span key={k} className="txt-head shrink-0 pr-16 text-[1.5vw] text-tape">
-              {line}   ◆   {line}
+            <span key={k} className="txt-court shrink-0 pr-16 text-[1.35vw] text-brass-300">
+              {line}   ·   {line}
             </span>
           ))}
         </div>
@@ -182,7 +275,7 @@ export function NewsTicker({
 }
 
 // ══════════════════════════════════════════════════════════════
-// 숫자 롤링 카운터
+// 숫자 롤링
 // ══════════════════════════════════════════════════════════════
 
 export function RollingNumber({
@@ -218,10 +311,173 @@ export function RollingNumber({
 }
 
 // ══════════════════════════════════════════════════════════════
-// 1회성 연출 오버레이
+// 적립금 사다리
 // ══════════════════════════════════════════════════════════════
 
-/** 지폐 비 */
+export function PrizeLadder({
+  ladder,
+  cleared,
+  unit,
+  maxTotal,
+  bonus = 0,
+  size = 'md',
+}: {
+  ladder: number[]
+  cleared: number
+  unit: string
+  maxTotal: number
+  bonus?: number
+  size?: 'sm' | 'md' | 'lg'
+}) {
+  const f =
+    size === 'lg'
+      ? { step: '2.1vw', label: '0.85vw', h: '7.5vh', min: '4.4vw', gap: '0.45vw' }
+      : { step: '1.5vw', label: '0.7vw', h: '5.5vh', min: '3.6vw', gap: '0.35vw' }
+
+  return (
+    <div className="flex items-end" style={{ gap: f.gap }}>
+      {ladder.map((amt, i) => {
+        const done = i < cleared
+        const now = i === cleared
+        return (
+          <div key={i} className="flex flex-col items-center" style={{ gap: 2 }}>
+            <div
+              className={`plaque relative flex items-center justify-center overflow-hidden ${
+                done ? 'tex-brass anim-sheen' : ''
+              } ${now ? 'anim-blink' : ''}`}
+              style={{
+                height: f.h,
+                minWidth: f.min,
+                border: done
+                  ? '3px solid #6d4f06'
+                  : now
+                    ? '3px solid #c9a227'
+                    : '3px solid #2a1509',
+                background: done
+                  ? undefined
+                  : now
+                    ? 'linear-gradient(180deg,#3a2010,#1a0d05)'
+                    : 'linear-gradient(180deg,#241409,#150b05)',
+                boxShadow: done
+                  ? '0 0 20px rgba(201,162,39,.6)'
+                  : 'inset 0 4px 12px rgba(0,0,0,.9)',
+              }}
+            >
+              <span
+                className="txt-num leading-none"
+                style={{
+                  fontSize: f.step,
+                  color: done ? '#2a1509' : now ? '#ffd97a' : '#6b5335',
+                }}
+              >
+                {amt}
+              </span>
+            </div>
+            <span
+              className="txt-court leading-none"
+              style={{
+                fontSize: f.label,
+                color: done ? '#ffd97a' : now ? '#c9a227' : 'rgba(255,255,255,.22)',
+              }}
+            >
+              {i + 1}건
+            </span>
+          </div>
+        )
+      })}
+
+      <div className="flex flex-col items-center" style={{ gap: 2 }}>
+        <div
+          className="plaque flex items-center justify-center overflow-hidden"
+          style={{
+            height: f.h,
+            minWidth: f.min,
+            border: bonus > 0 ? '3px solid #d94f8a' : '3px solid #2a1509',
+            background:
+              bonus > 0
+                ? 'linear-gradient(180deg,#d94f8a,#6b1440)'
+                : 'linear-gradient(180deg,#241409,#150b05)',
+            boxShadow: bonus > 0 ? '0 0 20px rgba(217,79,138,.6)' : 'inset 0 4px 12px rgba(0,0,0,.9)',
+          }}
+        >
+          <span
+            className="txt-num leading-none"
+            style={{ fontSize: f.step, color: bonus > 0 ? '#fff' : '#6b5335' }}
+          >
+            {maxTotal}
+          </span>
+        </div>
+        <span
+          className="txt-court leading-none"
+          style={{ fontSize: f.label, color: bonus > 0 ? '#ff9ec4' : 'rgba(255,255,255,.22)' }}
+        >
+          직권
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** 상단 고정 적립금 바 */
+export function PrizeBar({
+  earned,
+  meta,
+}: {
+  earned: number
+  meta: {
+    cleared: number
+    totalGames: number
+    next: number
+    maxTotal: number
+    unit: string
+    demandStanding: number
+  }
+}) {
+  const pct = meta.maxTotal > 0 ? Math.min(100, (earned / meta.maxTotal) * 100) : 0
+  const remain = Math.max(0, meta.next - earned)
+  return (
+    <div className="relative z-30 w-full border-b-[3px] border-[#170c04] bg-[#150b05]/92 px-[1.5vw] pb-[0.6vh] pt-[1.1vh] backdrop-blur">
+      <div className="flex items-center gap-[1.2vw]">
+        <div className="txt-court shrink-0 text-[1.2vw] tracking-widest text-brass-300">
+          적립금
+        </div>
+        <div className="txt-num txt-gold shrink-0 text-[3vw] leading-none">
+          <RollingNumber value={earned} />
+          <span className="ml-1 text-[1.4vw]">{meta.unit}</span>
+        </div>
+
+        <div
+          className="relative h-[1.9vh] flex-1 overflow-hidden rounded-sm border-[3px] border-[#170c04]"
+          style={{ background: '#241409' }}
+        >
+          <div
+            className="anim-sheen relative h-full overflow-hidden transition-[width] duration-1000 ease-out"
+            style={{
+              width: `${pct}%`,
+              background: 'linear-gradient(90deg,#6d4f06,#c9a227 55%,#fff3c4)',
+              boxShadow: '0 0 18px rgba(201,162,39,.6)',
+            }}
+          />
+          <div className="txt-court absolute inset-0 flex items-center justify-center text-[0.95vw] text-white/90 drop-shadow-[0_2px_2px_rgba(0,0,0,.95)]">
+            인용 {meta.cleared} / {meta.totalGames}
+            {remain > 0 && ` · 다음 단계까지 ${remain}${meta.unit}`}
+          </div>
+        </div>
+
+        {meta.demandStanding > 0 && (
+          <div className="txt-court shrink-0 text-[1vw] text-reject-lt">
+            확정 징역 {meta.demandStanding}년
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+// 1회성 연출
+// ══════════════════════════════════════════════════════════════
+
 function CashRain({ onDone }: { onDone: () => void }) {
   const bills = useMemo(
     () =>
@@ -258,10 +514,10 @@ function CashRain({ onDone }: { onDone: () => void }) {
           }
         >
           <div
-            className="flex h-[52px] w-[104px] items-center justify-center rounded-[3px] border-2 border-emerald-900/70 text-[13px] font-black text-emerald-950"
+            className="flex h-[52px] w-[104px] items-center justify-center rounded-[2px] border-2 border-[#6d4f06] text-[13px] font-black text-[#4a3405]"
             style={{
-              background: 'linear-gradient(150deg,#b7f7cd,#4ade80 40%,#16a34a 100%)',
-              boxShadow: '0 3px 10px rgba(0,0,0,.5), inset 0 0 0 3px rgba(255,255,255,.35)',
+              background: 'linear-gradient(150deg,#fff3c4,#ffd97a 40%,#c9a227 100%)',
+              boxShadow: '0 3px 10px rgba(0,0,0,.55), inset 0 0 0 3px rgba(255,255,255,.35)',
             }}
           >
             ₩
@@ -272,13 +528,19 @@ function CashRain({ onDone }: { onDone: () => void }) {
   )
 }
 
-/** 도장 쾅 */
 function StampOverlay({ text, tone, onDone }: { text: string; tone?: string; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 1700)
     return () => clearTimeout(t)
   }, [onDone])
-  const cls = tone === 'blue' ? 'stamp stamp-blue' : tone === 'gold' ? 'stamp stamp-gold' : 'stamp'
+  const cls =
+    tone === 'gold'
+      ? 'stamp stamp-gold'
+      : tone === 'blue'
+        ? 'stamp stamp-blue'
+        : tone === 'grant'
+          ? 'stamp stamp-grant'
+          : 'stamp'
   return (
     <div className="pointer-events-none fixed inset-0 z-[97] flex items-center justify-center">
       <div className={`${cls} anim-stamp text-[13vw] leading-none`}>{text}</div>
@@ -286,10 +548,11 @@ function StampOverlay({ text, tone, onDone }: { text: string; tone?: string; onD
   )
 }
 
-/** 클리어 배너 */
-function ClearOverlay({
+/** 인용 선고 */
+function GrantOverlay({
   amount,
   title,
+  subtitle,
   total,
   unit,
   step,
@@ -297,13 +560,14 @@ function ClearOverlay({
 }: {
   amount?: number
   title?: string
+  subtitle?: string
   total?: number
   unit?: string
   step?: number
   onDone: () => void
 }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 3400)
+    const t = setTimeout(onDone, 3600)
     return () => clearTimeout(t)
   }, [onDone])
   return (
@@ -313,37 +577,46 @@ function ClearOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="anim-spin-slow absolute h-[180vh] w-[180vh] opacity-25">
+      <div className="absolute inset-0 bg-black/70" />
+      <div className="anim-spin-slow absolute h-[190vh] w-[190vh] opacity-[0.16]">
         <div
           className="h-full w-full"
           style={{
             background:
-              'repeating-conic-gradient(from 0deg, #ffc72c 0deg 9deg, transparent 9deg 18deg)',
+              'repeating-conic-gradient(from 0deg, #c9a227 0deg 8deg, transparent 8deg 18deg)',
           }}
         />
       </div>
+
       <motion.div
         className="relative z-10 flex flex-col items-center"
-        initial={{ scale: 0.3, rotate: -12 }}
+        initial={{ scale: 0.3, rotate: -8 }}
         animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 12 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 13 }}
       >
-        <div className="txt-head txt-glow-gold anim-thump text-[8vw] leading-none">집행 성공</div>
-        {title && <div className="txt-head mt-1 text-[2.6vw] text-tape">{title}</div>}
+        <Gavel size="12vw" strike />
+        <div className="txt-head txt-glow-grant anim-thump -mt-[1vh] text-[8vw] leading-none">
+          인 용
+        </div>
+        {title && (
+          <div className="txt-court mt-1 text-[2.2vw] text-brass-300">
+            {title}
+            {subtitle && ` · ${subtitle}`}
+          </div>
+        )}
         {!!step && (
-          <div className="txt-head mt-2 text-[2vw] text-white/80">
-            보석금 {step}단계 도달
+          <div className="txt-court mt-1 text-[1.6vw] text-white/75">
+            적립금 {step}단계 도달
           </div>
         )}
         {typeof total === 'number' && (
-          <div className="txt-num txt-gold-plate mt-2 text-[10vw] leading-none">
+          <div className="txt-num txt-gold mt-2 text-[9vw] leading-none">
             {total.toLocaleString('ko-KR')}
-            <span className="text-[4vw]">{unit || ''}</span>
+            <span className="text-[3.5vw]">{unit || ''}</span>
           </div>
         )}
         {!!amount && amount > 0 && (
-          <div className="txt-num mt-1 text-[3vw] leading-none text-cash">
+          <div className="txt-num mt-1 text-[2.6vw] leading-none text-grant-lt">
             ▲ +{amount.toLocaleString('ko-KR')}
             {unit || ''}
           </div>
@@ -353,17 +626,33 @@ function ClearOverlay({
   )
 }
 
-/** 하트 폭발 */
+/** 기각 선고 */
+function RejectFlash({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1500)
+    return () => clearTimeout(t)
+  }, [onDone])
+  return (
+    <motion.div
+      className="pointer-events-none fixed inset-0 z-[94]"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 0.6, 0.15, 0.5, 0] }}
+      transition={{ duration: 1.4, times: [0, 0.1, 0.3, 0.5, 1] }}
+      style={{ background: 'radial-gradient(circle, rgba(192,57,43,.35), rgba(60,6,6,.92))' }}
+    />
+  )
+}
+
 function HeartBurst({ onDone }: { onDone: () => void }) {
   const hearts = useMemo(
     () =>
-      Array.from({ length: 40 }).map((_, i) => ({
+      Array.from({ length: 36 }).map((_, i) => ({
         i,
         x: (Math.random() - 0.5) * 120,
         y: -30 - Math.random() * 90,
         d: Math.random() * 0.5,
         s: 0.5 + Math.random() * 1.4,
-        e: ['💖', '💗', '💕', '❤️', '💘', '✨', '🌸'][Math.floor(Math.random() * 7)],
+        e: ['💖', '💗', '💕', '❤️', '💘', '✨'][i % 6],
       })),
     []
   )
@@ -389,7 +678,6 @@ function HeartBurst({ onDone }: { onDone: () => void }) {
   )
 }
 
-/** 3-2-1 카운트다운 */
 function Countdown({ onDone }: { onDone: () => void }) {
   const [n, setN] = useState(3)
   useEffect(() => {
@@ -400,13 +688,13 @@ function Countdown({ onDone }: { onDone: () => void }) {
       clearTimeout(t)
     }
   }, [onDone])
-  const label = n > 0 ? String(n) : '발성!'
+  const label = n > 0 ? String(n) : '진술!'
   return (
     <div className="pointer-events-none fixed inset-0 z-[97] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/55" />
+      <div className="absolute inset-0 bg-black/60" />
       <div
         key={label}
-        className={`anim-count txt-head relative ${n > 0 ? 'txt-glow-red' : 'txt-glow-gold'} text-[24vw] leading-none`}
+        className={`anim-count txt-head relative ${n > 0 ? 'txt-glow-reject' : 'txt-glow-gold'} text-[22vw] leading-none`}
       >
         {label}
       </div>
@@ -414,24 +702,6 @@ function Countdown({ onDone }: { onDone: () => void }) {
   )
 }
 
-/** 화면 붉은 경고 플래시 */
-function FailFlash({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 1400)
-    return () => clearTimeout(t)
-  }, [onDone])
-  return (
-    <motion.div
-      className="pointer-events-none fixed inset-0 z-[94]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: [0, 0.55, 0.1, 0.45, 0] }}
-      transition={{ duration: 1.3, times: [0, 0.1, 0.3, 0.5, 1] }}
-      style={{ background: 'radial-gradient(circle, rgba(225,6,0,.35), rgba(120,0,0,.9))' }}
-    />
-  )
-}
-
-/** 연출 매니저 — fx 이벤트를 받아 오버레이를 띄운다 */
 export function FxLayer({ fx }: { fx: Fx | null }) {
   const [items, setItems] = useState<Fx[]>([])
   const seen = useRef('')
@@ -449,23 +719,18 @@ export function FxLayer({ fx }: { fx: Fx | null }) {
       {items.map((f) => {
         switch (f.kind) {
           case 'cash':
-          case 'perfect':
             return <CashRain key={f._id} onDone={() => drop(f._id)} />
           case 'stamp':
             return (
-              <StampOverlay
-                key={f._id}
-                text={f.text || ''}
-                tone={f.tone}
-                onDone={() => drop(f._id)}
-              />
+              <StampOverlay key={f._id} text={f.text || ''} tone={f.tone} onDone={() => drop(f._id)} />
             )
           case 'clear':
             return (
-              <ClearOverlay
+              <GrantOverlay
                 key={f._id}
                 amount={f.amount}
                 title={f.title}
+                subtitle={(f as any).subtitle}
                 total={f.total}
                 unit={f.unit}
                 step={f.step}
@@ -478,7 +743,7 @@ export function FxLayer({ fx }: { fx: Fx | null }) {
             return <Countdown key={f._id} onDone={() => drop(f._id)} />
           case 'fail':
           case 'love-lose':
-            return <FailFlash key={f._id} onDone={() => drop(f._id)} />
+            return <RejectFlash key={f._id} onDone={() => drop(f._id)} />
           default:
             return null
         }
@@ -488,10 +753,9 @@ export function FxLayer({ fx }: { fx: Fx | null }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 공용 소품
+// 소품
 // ══════════════════════════════════════════════════════════════
 
-/** 사진 자리 (사진 없으면 실루엣) */
 export function PhotoBox({
   src,
   label = '사진',
@@ -505,181 +769,16 @@ export function PhotoBox({
 }) {
   if (src) {
     return (
-      <img
-        src={src}
-        alt={label}
-        className={`object-cover ${className}`}
-        style={style}
-        draggable={false}
-      />
+      <img src={src} alt={label} className={`object-cover ${className}`} style={style} draggable={false} />
     )
   }
   return (
     <div
-      className={`flex flex-col items-center justify-center border-4 border-dashed border-white/30 bg-black/45 ${className}`}
+      className={`flex flex-col items-center justify-center border-4 border-dashed border-brass/35 bg-black/50 ${className}`}
       style={style}
     >
-      <div className="text-[3.2vw] opacity-45">👤</div>
-      <div className="txt-head mt-1 text-[1.1vw] tracking-widest text-white/45">{label}</div>
-    </div>
-  )
-}
-
-/** 상금 사다리 — 게임을 깰수록 한 칸씩 올라간다 */
-export function PrizeLadder({
-  ladder,
-  cleared,
-  unit,
-  maxTotal,
-  bonus = 0,
-  size = 'md',
-}: {
-  ladder: number[]
-  cleared: number
-  unit: string
-  maxTotal: number
-  bonus?: number
-  size?: 'sm' | 'md' | 'lg'
-}) {
-  const f =
-    size === 'lg'
-      ? { step: '2.4vw', label: '1vw', h: '9vh', gap: '0.7vw' }
-      : size === 'sm'
-        ? { step: '17px', label: '10px', h: '48px', gap: '5px' }
-        : { step: '1.7vw', label: '0.8vw', h: '6.5vh', gap: '0.5vw' }
-
-  return (
-    <div className="flex items-end" style={{ gap: f.gap }}>
-      {ladder.map((amt, i) => {
-        const done = i < cleared
-        const now = i === cleared
-        return (
-          <div key={i} className="flex flex-col items-center" style={{ gap: 2 }}>
-            <div
-              className={`plate relative flex items-center justify-center overflow-hidden border-[3px] px-[0.5vw] ${
-                done
-                  ? 'anim-sheen border-gold'
-                  : now
-                    ? 'anim-blink border-tape'
-                    : 'border-con-500'
-              }`}
-              style={{
-                height: f.h,
-                minWidth: size === 'sm' ? 52 : '5vw',
-                background: done
-                  ? 'linear-gradient(180deg,#8a6508,#ffc72c 55%,#b8860b)'
-                  : now
-                    ? 'linear-gradient(180deg,#3a3a3a,#141414)'
-                    : 'linear-gradient(180deg,#1e1e1e,#0a0a0a)',
-                boxShadow: done ? '0 0 22px rgba(255,199,44,.75)' : 'inset 0 4px 12px rgba(0,0,0,.9)',
-              }}
-            >
-              <span
-                className={`txt-num leading-none ${
-                  done ? 'text-black' : now ? 'text-tape' : 'text-con-300'
-                }`}
-                style={{ fontSize: f.step }}
-              >
-                {amt}
-              </span>
-              {done && (
-                <span
-                  className="absolute right-[2px] top-[1px] leading-none"
-                  style={{ fontSize: f.label }}
-                >
-                  ✔
-                </span>
-              )}
-            </div>
-            <span
-              className={`txt-head leading-none ${done ? 'text-gold' : now ? 'text-tape' : 'text-white/25'}`}
-              style={{ fontSize: f.label }}
-            >
-              {i + 1}단
-            </span>
-          </div>
-        )
-      })}
-
-      {/* 보너스 → 최대치 */}
-      <div className="flex flex-col items-center" style={{ gap: 2 }}>
-        <div
-          className={`plate flex items-center justify-center border-[3px] px-[0.5vw] ${
-            bonus > 0 ? 'border-love' : 'border-con-500'
-          }`}
-          style={{
-            height: f.h,
-            minWidth: size === 'sm' ? 52 : '5vw',
-            background:
-              bonus > 0
-                ? 'linear-gradient(180deg,#a30058,#ff3e9d 55%,#a30058)'
-                : 'linear-gradient(180deg,#1e1e1e,#0a0a0a)',
-            boxShadow: bonus > 0 ? '0 0 22px rgba(255,62,157,.7)' : 'inset 0 4px 12px rgba(0,0,0,.9)',
-          }}
-        >
-          <span
-            className={`txt-num leading-none ${bonus > 0 ? 'text-white' : 'text-con-300'}`}
-            style={{ fontSize: f.step }}
-          >
-            {maxTotal}
-          </span>
-        </div>
-        <span
-          className={`txt-head leading-none ${bonus > 0 ? 'text-love-lt' : 'text-white/25'}`}
-          style={{ fontSize: f.label }}
-        >
-          보너스
-        </span>
-      </div>
-    </div>
-  )
-}
-
-/** 상단 고정 보석금 바 */
-export function PrizeBar({
-  earned,
-  meta,
-  bonus = 0,
-}: {
-  earned: number
-  meta: { cleared: number; totalGames: number; next: number; maxTotal: number; unit: string }
-  bonus?: number
-  /** 사다리 표시용 */
-  ladder?: number[]
-}) {
-  const pct = meta.maxTotal > 0 ? Math.min(100, (earned / meta.maxTotal) * 100) : 0
-  const remain = Math.max(0, meta.next - earned)
-  return (
-    <div className="relative z-30 w-full border-b-4 border-black bg-black/85 px-[1.5vw] py-[0.7vh] backdrop-blur">
-      <div className="flex items-center gap-[1.5vw]">
-        <div className="txt-head shrink-0 text-[1.3vw] tracking-widest text-tape">
-          💰 적립 보석금
-        </div>
-        <div className="txt-num txt-gold-plate shrink-0 text-[3.2vw] leading-none">
-          <RollingNumber value={earned} />
-          <span className="ml-1 text-[1.5vw]">{meta.unit}</span>
-        </div>
-
-        <div className="relative h-[2vh] flex-1 overflow-hidden rounded-full border-[3px] border-black bg-con-800">
-          <div
-            className="anim-sheen relative h-full overflow-hidden transition-[width] duration-1000 ease-out"
-            style={{
-              width: `${pct}%`,
-              background: 'linear-gradient(90deg,#b8860b,#ffc72c 55%,#fff3c4)',
-              boxShadow: '0 0 18px rgba(255,199,44,.65)',
-            }}
-          />
-          <div className="txt-head absolute inset-0 flex items-center justify-center text-[1vw] text-white/90 drop-shadow-[0_2px_2px_rgba(0,0,0,.9)]">
-            집행 {meta.cleared} / {meta.totalGames} 성공
-            {remain > 0 && ` · 다음 단계까지 ${remain}${meta.unit}`}
-          </div>
-        </div>
-
-        <div className="txt-head shrink-0 text-[1vw] text-white/50">
-          최대 {meta.maxTotal}
-          {meta.unit}
-        </div>
-      </div>
+      <div className="text-[3vw] opacity-40">👤</div>
+      <div className="txt-court mt-1 text-[1vw] tracking-widest text-brass/60">{label}</div>
     </div>
   )
 }

@@ -173,7 +173,7 @@ function SimpleControl({ g, d }: { g: SimpleState; d: (a: any) => void }) {
     <>
       <div className="ops-grid c2">
         <Btn kind="success" size="lg" disabled={g.cleared} onClick={() => d({ type: 'game.clear' })}>
-          성공
+          인용
         </Btn>
         <Btn
           kind="danger"
@@ -181,11 +181,11 @@ function SimpleControl({ g, d }: { g: SimpleState; d: (a: any) => void }) {
           disabled={g.cleared || g.failed}
           onClick={() => d({ type: 'game.fail' })}
         >
-          실패
+          기각
         </Btn>
       </div>
       <div className="ops-hint" style={{ textAlign: 'center' }}>
-        성공을 누르면 보석금이 다음 단계로 올라갑니다
+        인용을 누르면 적립금이 다음 단계로 올라갑니다
       </div>
     </>
   )
@@ -213,7 +213,7 @@ function CulpritControl({
           라운드 {g.round + 1} / {g.results.length}
         </span>
         <span className="ops-badge">
-          적중 {wins} · {gc.clearThreshold ?? 1}회면 성공
+          적중 {wins} · {gc.clearThreshold ?? 1}회면 인용
         </span>
       </div>
 
@@ -228,7 +228,7 @@ function CulpritControl({
           1. 벌칙 음식을 먹은 사람 <span className="ops-hint">— 나만 보임</span>
         </div>
         <div className="ops-grid c3">
-          {config.suspects.map((s) => (
+          {config.prosecutors.map((s) => (
             <Btn
               key={s.id}
               kind={g.guilty === s.id ? 'warn' : ''}
@@ -242,10 +242,10 @@ function CulpritControl({
 
       <div>
         <div className="ops-sub" style={{ marginBottom: 6 }}>
-          2. {config.groom.name}이 지목한 사람 <span className="ops-hint">— TV에 표시됨</span>
+          2. {config.defendant.name}이 지목한 사람 <span className="ops-hint">— TV에 표시됨</span>
         </div>
         <div className="ops-grid c3">
-          {config.suspects.map((s) => (
+          {config.prosecutors.map((s) => (
             <Btn
               key={s.id}
               kind={g.picked === s.id ? 'primary' : ''}
@@ -315,7 +315,7 @@ function VoiceControl({ g, gc, d }: { g: VoiceState; gc: GameConfig; d: (a: any)
           문제 {g.round + 1} / {g.results.length}
         </span>
         <span className="ops-badge">
-          정답 {wins} · {gc.clearThreshold ?? 3}문제면 성공
+          정답 {wins} · {gc.clearThreshold ?? 3}문제면 인용
         </span>
         <span className="ops-badge">청취 {g.listensLeft} / {maxL}</span>
       </div>
@@ -430,14 +430,16 @@ function BonusControl({
       </span>
 
       <div className="ops-note">
-        <div className="ops-hint" style={{ marginBottom: 3 }}>질문 — TV에 표시됨</div>
-        <b style={{ fontSize: 15 }}>{g.question || '질문 미입력'}</b>
+        <div className="ops-hint" style={{ marginBottom: 3 }}>신문 사항 — TV에 표시됨</div>
+        <b style={{ fontSize: 15 }}>{g.question || '신문 사항 미입력'}</b>
       </div>
 
       <div className="ops-secret">
-        <div className="ops-secret-label">{config.bride.name} 님 답변 · 나만 보임</div>
+        <div className="ops-secret-label">
+          증인 {config.witness.name} 진술 · 나만 보임
+        </div>
         <div className="ops-secret-value" style={{ fontSize: 20 }}>
-          {g.answer || '답변 미입력 — 설정에서 입력하세요'}
+          {g.answer || '진술 미입력 — 설정에서 입력하세요'}
         </div>
       </div>
 
@@ -461,17 +463,17 @@ function BonusControl({
 
       <div className="ops-divider" />
 
-      <div className="ops-sub">정답 보상 — 둘 중 하나 선택</div>
+      <div className="ops-sub">진술 일치 시 보상 — 둘 중 하나 선택</div>
 
       <div>
-        <div className="ops-hint" style={{ marginBottom: 6 }}>1. 실패한 집행 되살리기</div>
+        <div className="ops-hint" style={{ marginBottom: 6 }}>1. 기각된 공소사실 재심 개시</div>
         {failed.length === 0 ? (
-          <div className="ops-note">현재 실패한 집행이 없습니다</div>
+          <div className="ops-note">현재 기각된 공소사실이 없습니다</div>
         ) : (
           <div style={{ display: 'grid', gap: 8 }}>
             {failed.map((x) => (
               <Btn key={x.id} kind="warn" onClick={() => d({ type: 'revive.grant', gameId: x.id })}>
-                {x.no} · {x.title} 재도전
+                {x.no} · {x.charge || x.title} 재심
               </Btn>
             ))}
           </div>
@@ -480,7 +482,7 @@ function BonusControl({
 
       <div>
         <div className="ops-hint" style={{ marginBottom: 6 }}>
-          2. 보너스 상금 지급 — 최대치까지 {room}
+          2. 재판부 직권 적립금 가산 — 최대치까지 {room}
           {state.meta.unit} 남음
         </div>
         <div className="ops-grid c3">
@@ -488,7 +490,7 @@ function BonusControl({
             <Btn
               key={v}
               disabled={room <= 0}
-              onClick={() => d({ type: 'prize.bonus', amount: v, label: '천생연분 보너스' })}
+              onClick={() => d({ type: 'prize.bonus', amount: v, label: '재판부 직권 가산' })}
             >
               +{v}
               {state.meta.unit}
@@ -582,7 +584,7 @@ export default function Controller() {
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--faint)' }}>
-              TV {conn.tv} · 폰 {conn.spectator} · 진행자 {conn.control}
+              TV {conn.tv} · 방청 {conn.spectator} · 판사 {conn.control}
             </div>
           </div>
 
@@ -599,7 +601,8 @@ export default function Controller() {
               <span style={{ fontSize: 14, color: 'var(--muted)', marginLeft: 2 }}>{m.unit}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-              집행 {m.cleared}/{m.totalGames}
+              인용 {m.cleared}/{m.totalGames}
+              {m.demandStanding > 0 && ` · 확정 ${m.demandStanding}년`}
               {remain > 0 && ` · 다음까지 ${remain}${m.unit}`}
             </div>
           </div>
@@ -615,13 +618,21 @@ export default function Controller() {
       </div>
 
       <div className="ops-page">
+        {/* 진행 순서 */}
+        <div className="ops-note" style={{ borderColor: 'var(--warn)' }}>
+          <b style={{ color: '#fcd34d' }}>재판 진행 순서</b>
+          <br />① 아래에서 <b>공소사실</b> 선택 → 담당 검사가 죄명·구형 낭독 → ② 게임 진행 후{' '}
+          <b>인용 / 기각</b> 선고 → ③ 인용되면 적립금이 다음 단계로 자동 상승 → ④ 기각되면{' '}
+          <b>증인 신문</b>으로 재심 신청
+        </div>
+
         {/* 화면 전환 */}
-        <Card title="TV 화면" desc="누르면 TV와 친구들 폰이 즉시 바뀝니다">
+        <Card title="TV 화면" desc="누르면 TV와 방청석 폰이 즉시 바뀝니다">
           <div className="ops-grid c4">
-            {screenBtn('인트로', 'intro')}
-            {screenBtn('상금 현황', 'dashboard')}
-            {screenBtn('머그샷', 'mugshot')}
-            {screenBtn('증명서', 'certificate')}
+            {screenBtn('개정', 'intro')}
+            {screenBtn('진행표', 'dashboard')}
+            {screenBtn('피고인', 'defendant')}
+            {screenBtn('판결문', 'verdict')}
           </div>
 
           <div className="ops-divider" />
@@ -643,12 +654,25 @@ export default function Controller() {
                     </span>
                     <span
                       style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        minWidth: 0,
+                        textAlign: 'left',
                       }}
                     >
-                      {x.title}
+                      <span
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {x.charge || x.title}
+                      </span>
+                      <span className="ops-hint">
+                        {x.prosecutor} · 징역 {x.demand ?? 0}년
+                      </span>
                     </span>
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
@@ -657,9 +681,9 @@ export default function Controller() {
                       {m.unit}
                     </span>
                     {s?.cleared ? (
-                      <span className="ops-badge success">성공</span>
+                      <span className="ops-badge success">인용</span>
                     ) : s?.failed ? (
-                      <span className="ops-badge danger">실패</span>
+                      <span className="ops-badge danger">기각</span>
                     ) : null}
                   </span>
                 </button>
@@ -674,7 +698,7 @@ export default function Controller() {
                 onClick={() => d({ type: 'goto', phase: 'game', gameId: x.id })}
               >
                 <span>{x.title}</span>
-                <span className="ops-hint">부활 전용</span>
+                <span className="ops-hint">재심 전용</span>
               </button>
             ))}
           </div>
@@ -684,25 +708,32 @@ export default function Controller() {
         {gc && g ? (
           <Card
             active
-            title={`${gc.no} · ${gc.title}`}
+            title={`${gc.no} · ${gc.charge || gc.title}`}
             desc={gc.rule}
             right={
               g.cleared ? (
-                <span className="ops-badge success">성공</span>
+                <span className="ops-badge success">인용</span>
               ) : g.failed ? (
-                <span className="ops-badge danger">실패</span>
+                <span className="ops-badge danger">기각</span>
               ) : (
-                <span className="ops-badge">진행중</span>
+                <span className="ops-badge">심리중</span>
               )
             }
           >
+            {gc.indictment && (
+              <div className="ops-note">
+                <span className="ops-hint">공소사실</span>
+                <br />
+                {gc.indictment}
+              </div>
+            )}
             {gc.win && (
               <div className="ops-note">
-                성공 조건 <b>{gc.win}</b>
+                인용 조건 <b>{gc.win}</b> · 구형 <b>징역 {gc.demand ?? 0}년</b>
                 {!g.cleared && (
                   <>
                     <br />
-                    성공 시 보석금{' '}
+                    인용 시 적립금{' '}
                     <b style={{ color: '#ffc72c' }}>
                       {m.next}
                       {m.unit}
@@ -723,17 +754,17 @@ export default function Controller() {
             {gc.type === 'simple' && <SimpleControl g={g as SimpleState} d={d} />}
 
             <details className="ops-details">
-              <summary style={{ padding: '8px 0' }}>강제 판정 · 초기화</summary>
+              <summary style={{ padding: '8px 0' }}>직권 선고 · 심리 재개</summary>
               <div style={{ marginTop: 8 }}>
                 <div className="ops-grid c3">
                   <Btn size="sm" kind="success" onClick={() => d({ type: 'game.clear' })}>
-                    강제 성공
+                    직권 인용
                   </Btn>
                   <Btn size="sm" kind="danger" onClick={() => d({ type: 'game.fail' })}>
-                    강제 실패
+                    직권 기각
                   </Btn>
                   <Btn size="sm" kind="ghost" onClick={() => d({ type: 'game.reset' })}>
-                    처음부터
+                    심리 재개
                   </Btn>
                 </div>
                 <div className="ops-hint" style={{ marginTop: 6 }}>
@@ -743,8 +774,8 @@ export default function Controller() {
             </details>
           </Card>
         ) : (
-          <Card title="현재 게임">
-            <div className="ops-note">위에서 게임을 선택하면 조작 버튼이 나타납니다</div>
+          <Card title="현재 공소사실">
+            <div className="ops-note">위에서 공소사실을 선택하면 조작 버튼이 나타납니다</div>
           </Card>
         )}
 
@@ -835,7 +866,7 @@ export default function Controller() {
           <Btn
             kind="ghost"
             onClick={() => {
-              if (confirm('게임 진행과 보석금을 전부 처음 상태로 되돌립니다. 진행할까요?'))
+              if (confirm('심리 진행과 적립금을 전부 처음 상태로 되돌립니다. 진행할까요?'))
                 d({ type: 'prize.reset' })
             }}
           >

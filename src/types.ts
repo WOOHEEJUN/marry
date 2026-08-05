@@ -1,9 +1,9 @@
-export type Phase = 'intro' | 'dashboard' | 'mugshot' | 'game' | 'certificate'
+export type Phase = 'intro' | 'dashboard' | 'defendant' | 'game' | 'verdict'
 export type RoundResult = 'pending' | 'win' | 'lose'
 export type Role = 'tv' | 'control' | 'admin' | 'spectator'
 export type GameType = 'culprit' | 'voice' | 'bonus' | 'simple'
 
-export interface Suspect {
+export interface Person {
   id: number
   name: string
   photo?: string
@@ -18,14 +18,24 @@ export interface Evidence {
 export interface GameConfig {
   id: string
   type: GameType
-  /** true 면 사다리에 포함되지 않는 보너스/부활 게임 */
+  /** true 면 사다리에 포함되지 않는 직권 신문(부활용) */
   bonus?: boolean
+  /** 공소사실 제N항 */
   no: string
+  /** 구형한 검사 */
+  prosecutor?: string
+  /** 죄명 */
+  charge?: string
+  /** 게임 이름 */
   title: string
   subtitle?: string
-  /** 진행 방법 설명 (TV·컨트롤러에 표시) */
+  /** 공소사실 (억까 사유) */
+  indictment?: string
+  /** 구형 징역 년수 */
+  demand?: number
+  /** 진행 방법 */
   rule?: string
-  /** 성공 조건 설명 */
+  /** 인용 조건 */
   win?: string
   rounds?: number
   clearThreshold?: number
@@ -36,26 +46,32 @@ export interface GameConfig {
 }
 
 export interface Config {
-  party: { title: string; date: string; weddingDate: string }
-  groom: {
+  court: {
+    title: string
+    caseNo: string
+    room: string
+    date: string
+    weddingDate: string
+    judge: string
+  }
+  defendant: {
     name: string
     photo?: string
-    prisonNo: string
-    crimeName: string
-    sentence: string
-    parole: string
+    birth?: string
+    job?: string
+    address?: string
     note: string
-    crimes: string[]
+    record: string[]
   }
-  bride: { name: string; photo?: string }
+  witness: { name: string; photo?: string; role?: string }
   prize: {
     unit: string
-    /** 게임을 N개 클리어했을 때 '누적 도달' 금액 */
+    /** 공소사실을 N건 인용받았을 때 '누적 도달' 적립금 */
     ladder: number[]
     maxTotal: number
     bonusStep?: number
   }
-  suspects: Suspect[]
+  prosecutors: Person[]
   games: GameConfig[]
   controlPin?: string
 }
@@ -106,15 +122,17 @@ export interface PrizeLog {
 }
 
 export interface Meta {
-  /** 클리어한 본게임 수 */
+  /** 인용된 공소사실 건수 */
   cleared: number
   totalGames: number
-  /** 현재 도달 금액 (사다리) */
   current: number
-  /** 다음 단계 금액 */
   next: number
   maxTotal: number
   unit: string
+  /** 총 구형 징역 (년) */
+  demandTotal: number
+  /** 기각시켜 확정된 징역 (년) */
+  demandStanding: number
 }
 
 export interface AppState {

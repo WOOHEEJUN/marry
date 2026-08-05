@@ -25,8 +25,8 @@ export default function App() {
   }, [])
 
   const fallback = (
-    <div className="tex-concrete flex min-h-full items-center justify-center">
-      <div className="txt-head anim-blink text-[20px] text-tape">🚨 불러오는 중...</div>
+    <div className="tex-hall flex min-h-full items-center justify-center">
+      <div className="txt-court anim-blink text-[20px] text-brass-300">불러오는 중…</div>
     </div>
   )
 

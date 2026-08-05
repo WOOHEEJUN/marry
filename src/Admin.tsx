@@ -274,8 +274,8 @@ export default function Admin() {
           <>
             {/* 상금 */}
             <Card
-              title="상금 사다리"
-              desc="게임을 몇 개 깼는지에 따라 누적 금액이 결정됩니다. 라운드당 적립은 없습니다."
+              title="적립금 사다리"
+              desc="공소사실을 몇 건 인용받았는지에 따라 누적 금액이 결정됩니다. 라운드당 적립은 없습니다."
             >
               <div className="ops-grid c2">
                 <Field
@@ -308,7 +308,7 @@ export default function Admin() {
                         color: 'var(--muted)',
                       }}
                     >
-                      {i + 1}개 깨면
+                      {i + 1}건 인용
                     </span>
                     <input
                       className="ops-input ops-num"
@@ -340,13 +340,13 @@ export default function Admin() {
                   className="ops-note"
                   style={{ borderColor: 'var(--warn)', color: '#fcd34d' }}
                 >
-                  단계 {cfg.prize.ladder.length}개 / 본게임 {mains.length}개 — 개수를 맞춰주세요
+                  단계 {cfg.prize.ladder.length}개 / 공소사실 {mains.length}건 — 개수를 맞춰주세요
                 </div>
               )}
 
               <Field
-                label="보너스 지급 단위"
-                hint="천생연분 정답 시 지급 버튼 금액"
+                label="직권 가산 단위"
+                hint="증인 신문 성공 시 지급 버튼 금액"
                 type="number"
                 value={cfg.prize.bonusStep ?? 10}
                 onChange={(v) => up((c) => void (c.prize.bonusStep = Number(v) || 0))}
@@ -359,41 +359,62 @@ export default function Admin() {
               return (
                 <Card
                   key={gc.id}
-                  title={`${gc.no} · ${gc.title}`}
+                  title={`${gc.no} · ${gc.charge || gc.title}`}
                   desc={
                     gc.bonus
-                      ? '부활 전용 보너스 게임 (사다리 미포함)'
-                      : `${idx + 1}번째 게임 · 성공 시 누적 ${cfg.prize.ladder[idx] ?? '?'}${unit}`
+                      ? '재심 전용 (적립금 사다리 미포함)'
+                      : `${idx + 1}번째 · 인용 시 누적 ${cfg.prize.ladder[idx] ?? '?'}${unit} · 구형 징역 ${gc.demand ?? 0}년`
                   }
                   defaultOpen={false}
                 >
                   <div className="ops-grid c2">
                     <Field
-                      label="차수 표기"
+                      label="항목 표기"
+                      hint="예: 공소사실 제1항"
                       value={gc.no}
                       onChange={(v) => up((c) => void (G(c, gc.id).no = v))}
                     />
                     <Field
-                      label="게임 이름"
-                      value={gc.title}
-                      onChange={(v) => up((c) => void (G(c, gc.id).title = v))}
+                      label="담당 검사"
+                      value={gc.prosecutor || ''}
+                      onChange={(v) => up((c) => void (G(c, gc.id).prosecutor = v))}
+                    />
+                  </div>
+                  <div className="ops-grid c2">
+                    <Field
+                      label="죄명"
+                      hint="TV에 크게 표시"
+                      value={gc.charge || ''}
+                      onChange={(v) => up((c) => void (G(c, gc.id).charge = v))}
+                    />
+                    <Field
+                      label="구형 징역 (년)"
+                      type="number"
+                      value={gc.demand ?? 0}
+                      onChange={(v) => up((c) => void (G(c, gc.id).demand = Number(v) || 0))}
                     />
                   </div>
                   <Field
-                    label="부제"
-                    hint="선택"
-                    value={gc.subtitle || ''}
-                    onChange={(v) => up((c) => void (G(c, gc.id).subtitle = v))}
+                    label="공소사실"
+                    hint="억까 사유 · TV에 표시"
+                    area
+                    value={gc.indictment || ''}
+                    onChange={(v) => up((c) => void (G(c, gc.id).indictment = v))}
                   />
                   <Field
-                    label="진행 방법"
-                    hint="TV와 컨트롤러에 표시"
+                    label="게임 이름"
+                    value={gc.title}
+                    onChange={(v) => up((c) => void (G(c, gc.id).title = v))}
+                  />
+                  <Field
+                    label="심리 방법"
+                    hint="게임 진행 방법 · TV와 컨트롤러에 표시"
                     area
                     value={gc.rule || ''}
                     onChange={(v) => up((c) => void (G(c, gc.id).rule = v))}
                   />
                   <Field
-                    label="성공 조건"
+                    label="인용 조건"
                     hint="예: 3라운드 중 1회 이상 적중"
                     value={gc.win || ''}
                     onChange={(v) => up((c) => void (G(c, gc.id).win = v))}
@@ -410,7 +431,7 @@ export default function Admin() {
                           onChange={(v) => up((c) => void (G(c, gc.id).rounds = Number(v) || 1))}
                         />
                         <Field
-                          label="성공 기준"
+                          label="인용 기준"
                           hint="적중 횟수"
                           type="number"
                           value={gc.clearThreshold ?? 1}
@@ -473,7 +494,7 @@ export default function Admin() {
                       <div className="ops-divider" />
                       <div className="ops-grid c2">
                         <Field
-                          label="성공 기준"
+                          label="인용 기준"
                           hint="맞혀야 하는 문제 수"
                           type="number"
                           value={gc.clearThreshold ?? 3}
@@ -555,7 +576,7 @@ export default function Admin() {
                   {gc.type === 'bonus' && (
                     <>
                       <div className="ops-divider" />
-                      <div className="ops-sub">인터뷰 질문과 신부님 답변</div>
+                      <div className="ops-sub">신문 사항과 증인 진술</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {(gc.interviews || []).map((it, i) => (
                           <div
@@ -573,7 +594,7 @@ export default function Admin() {
                             <input
                               className="ops-input"
                               value={it.q}
-                              placeholder="질문 (TV에 표시)"
+                              placeholder="신문 사항 (TV에 표시)"
                               onChange={(e) =>
                                 up((c) => void (G(c, gc.id).interviews![i].q = e.target.value))
                               }
@@ -581,7 +602,7 @@ export default function Admin() {
                             <input
                               className="ops-input secret"
                               value={it.a || ''}
-                              placeholder="신부님 답변 (공개 전까지 숨김)"
+                              placeholder="증인 진술 (공개 전까지 숨김)"
                               onChange={(e) =>
                                 up((c) => void (G(c, gc.id).interviews![i].a = e.target.value))
                               }
@@ -609,81 +630,123 @@ export default function Admin() {
 
                   {gc.type === 'simple' && (
                     <div className="ops-note">
-                      진행자가 컨트롤러에서 <b>성공 / 실패</b>만 눌러 판정하는 게임입니다. 규칙이
-                      정해지면 위의 진행 방법과 성공 조건만 채워 넣으면 됩니다.
+                      판사가 컨트롤러에서 <b>인용 / 기각</b>만 눌러 선고하는 공소사실입니다. 검사가
+                      게임을 정하면 위의 죄명·공소사실·심리 방법·인용 조건만 채워 넣으면 됩니다.
                     </div>
                   )}
                 </Card>
               )
             })}
 
-            {/* 인물 */}
-            <Card title="신랑 · 신부" defaultOpen={false}>
+            {/* 법정 */}
+            <Card title="재판 정보" defaultOpen={false}>
               <div className="ops-grid c2">
                 <Field
-                  label="신랑 이름"
-                  value={cfg.groom.name}
-                  onChange={(v) => up((c) => void (c.groom.name = v))}
+                  label="사건 제목"
+                  value={cfg.court.title}
+                  onChange={(v) => up((c) => void (c.court.title = v))}
                 />
                 <Field
-                  label="신부 이름"
-                  value={cfg.bride.name}
-                  onChange={(v) => up((c) => void (c.bride.name = v))}
+                  label="사건번호"
+                  value={cfg.court.caseNo}
+                  onChange={(v) => up((c) => void (c.court.caseNo = v))}
+                />
+              </div>
+              <div className="ops-grid c2">
+                <Field
+                  label="법정"
+                  hint="예: 제1호 법정"
+                  value={cfg.court.room}
+                  onChange={(v) => up((c) => void (c.court.room = v))}
+                />
+                <Field
+                  label="선고일 (결혼식)"
+                  hint="YYYY-MM-DD"
+                  value={cfg.court.weddingDate}
+                  onChange={(v) => up((c) => void (c.court.weddingDate = v))}
+                />
+              </div>
+            </Card>
+
+            <Card title="피고인 · 증인" defaultOpen={false}>
+              <div className="ops-grid c2">
+                <Field
+                  label="피고인 이름"
+                  value={cfg.defendant.name}
+                  onChange={(v) => up((c) => void (c.defendant.name = v))}
+                />
+                <Field
+                  label="증인 이름"
+                  hint="예비 배우자"
+                  value={cfg.witness.name}
+                  onChange={(v) => up((c) => void (c.witness.name = v))}
                 />
               </div>
               <Field
-                label="신랑 사진 URL"
+                label="피고인 사진 URL"
                 hint="/img/groom.jpg 형태"
-                value={cfg.groom.photo || ''}
-                onChange={(v) => up((c) => void (c.groom.photo = v))}
+                value={cfg.defendant.photo || ''}
+                onChange={(v) => up((c) => void (c.defendant.photo = v))}
               />
               <Field
-                label="신부 사진 URL"
-                value={cfg.bride.photo || ''}
-                onChange={(v) => up((c) => void (c.bride.photo = v))}
+                label="증인 사진 URL"
+                value={cfg.witness.photo || ''}
+                onChange={(v) => up((c) => void (c.witness.photo = v))}
               />
+              <div className="ops-grid c2">
+                <Field
+                  label="직업"
+                  value={cfg.defendant.job || ''}
+                  onChange={(v) => up((c) => void (c.defendant.job = v))}
+                />
+                <Field
+                  label="주거"
+                  value={cfg.defendant.address || ''}
+                  onChange={(v) => up((c) => void (c.defendant.address = v))}
+                />
+              </div>
               <Field
                 label="특이사항"
-                value={cfg.groom.note}
-                onChange={(v) => up((c) => void (c.groom.note = v))}
+                value={cfg.defendant.note}
+                onChange={(v) => up((c) => void (c.defendant.note = v))}
               />
 
-              <div className="ops-sub">여죄 (친구 진술)</div>
+              <div className="ops-sub">전과 및 여죄 (검사 진술)</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {cfg.groom.crimes.map((cr, i) => (
-                  <RowItem key={i} onDelete={() => up((c) => void c.groom.crimes.splice(i, 1))}>
+                {cfg.defendant.record.map((cr, i) => (
+                  <RowItem key={i} onDelete={() => up((c) => void c.defendant.record.splice(i, 1))}>
                     <input
                       className="ops-input"
                       value={cr}
-                      onChange={(e) => up((c) => void (c.groom.crimes[i] = e.target.value))}
+                      onChange={(e) => up((c) => void (c.defendant.record[i] = e.target.value))}
                     />
                   </RowItem>
                 ))}
               </div>
-              <Btn kind="ghost" block onClick={() => up((c) => void c.groom.crimes.push(''))}>
+              <Btn kind="ghost" block onClick={() => up((c) => void c.defendant.record.push(''))}>
                 여죄 추가
               </Btn>
             </Card>
 
             <Card
-              title="용의자 (친구들)"
-              desc="인원수는 자유입니다. TV 라인업이 자동으로 맞춰집니다."
+              title="검사단"
+              desc="인원수는 자유입니다. 대질신문 라인업이 자동으로 맞춰집니다."
               defaultOpen={false}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {cfg.suspects.map((s, i) => (
-                  <RowItem key={s.id} onDelete={() => up((c) => void c.suspects.splice(i, 1))}>
+                {cfg.prosecutors.map((s, i) => (
+                  <RowItem key={s.id} onDelete={() => up((c) => void c.prosecutors.splice(i, 1))}>
                     <input
                       className="ops-input"
                       value={s.name}
                       placeholder="이름"
-                      onChange={(e) => up((c) => void (c.suspects[i].name = e.target.value))}
+                      onChange={(e) => up((c) => void (c.prosecutors[i].name = e.target.value))}
                     />
                     <input
                       className="ops-input"
                       value={s.photo || ''}
                       placeholder="사진 URL"
-                      onChange={(e) => up((c) => void (c.suspects[i].photo = e.target.value))}
+                      onChange={(e) => up((c) => void (c.prosecutors[i].photo = e.target.value))}
                     />
                   </RowItem>
                 ))}
@@ -693,12 +756,12 @@ export default function Admin() {
                 block
                 onClick={() =>
                   up((c) => {
-                    const id = Math.max(0, ...c.suspects.map((s) => s.id)) + 1
-                    c.suspects.push({ id, name: `용의자 ${id}`, photo: '' })
+                    const id = Math.max(0, ...c.prosecutors.map((s) => s.id)) + 1
+                    c.prosecutors.push({ id, name: `검사 ${id}`, photo: '' })
                   })
                 }
               >
-                용의자 추가
+                검사 추가
               </Btn>
             </Card>
 

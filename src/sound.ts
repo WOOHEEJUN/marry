@@ -73,32 +73,39 @@ function noise(t0: number, dur: number, filterFreq = 1200, q = 1) {
 
 // ── 개별 사운드 ────────────────────────────────────────────────
 
-/** 경찰 사이렌 (왕-앙-왕) */
-export function sfxSiren(cycles = 3) {
+/** 판사봉 — 나무 타격음 (탕! 탕! 탕!) */
+export function sfxGavel(strikes = 3) {
   if (!isAudioOn()) return
   const t0 = now()
-  const o = ctx!.createOscillator()
-  o.type = 'sawtooth'
-  const g = ctx!.createGain()
-  g.gain.setValueAtTime(0.0001, t0)
-  g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.08)
-  const dur = cycles * 0.7
-  for (let i = 0; i < cycles; i++) {
-    const s = t0 + i * 0.7
-    o.frequency.setValueAtTime(660, s)
-    o.frequency.linearRampToValueAtTime(1180, s + 0.35)
-    o.frequency.linearRampToValueAtTime(660, s + 0.7)
+  for (let i = 0; i < strikes; i++) {
+    const s = t0 + i * 0.26
+    // 나무 몸통 울림
+    const o = ctx!.createOscillator()
+    o.type = 'triangle'
+    o.frequency.setValueAtTime(320, s)
+    o.frequency.exponentialRampToValueAtTime(72, s + 0.14)
+    env(o, s, 0.002, 0.16, 0.55)
+    o.start(s)
+    o.stop(s + 0.25)
+    // 타격 순간의 딱 소리
+    const n = noise(s, 0.05, 2100, 1.1)
+    env(n, s, 0.001, 0.05, 0.42)
+    // 배음
+    ;[880, 1240].forEach((f, k) => {
+      const m = osc('sine', f, s + k * 0.004, 0.12)
+      env(m, s + k * 0.004, 0.002, 0.12, 0.1)
+    })
   }
-  g.gain.setValueAtTime(0.22, t0 + dur - 0.2)
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
-  const f = ctx!.createBiquadFilter()
-  f.type = 'lowpass'
-  f.frequency.value = 2400
-  o.connect(f)
-  f.connect(g)
-  g.connect(master!)
-  o.start(t0)
-  o.stop(t0 + dur + 0.1)
+}
+
+/** 법정 개정 종 */
+export function sfxCourtBell() {
+  if (!isAudioOn()) return
+  const t0 = now()
+  ;[523, 784, 1046].forEach((f, i) => {
+    const o = osc('sine', f, t0 + i * 0.02, 1.6)
+    env(o, t0 + i * 0.02, 0.01, 1.6, 0.13)
+  })
 }
 
 /** 돈 — 코인 짤랑 + 금전등록기 */
@@ -258,14 +265,13 @@ export function playFx(kind: string) {
       sfxStamp()
       break
     case 'fail':
-      sfxFail()
-      sfxCellDoor()
+      sfxGavel(1)
+      setTimeout(() => sfxFail(), 120)
+      setTimeout(() => sfxCellDoor(), 200)
       break
     case 'clear':
-      sfxFanfare()
-      break
-    case 'perfect':
-      sfxFanfare()
+      sfxGavel(3)
+      setTimeout(() => sfxFanfare(), 620)
       break
     case 'lock-on':
       sfxLockOn()
@@ -286,13 +292,16 @@ export function playFx(kind: string) {
       break
     case 'revive':
     case 'revive-offer':
-      sfxSiren(1)
+      sfxCourtBell()
       break
     case 'whoosh':
       sfxWhoosh()
       break
-    case 'siren':
-      sfxSiren(3)
+    case 'gavel':
+      sfxGavel(3)
+      break
+    case 'bell':
+      sfxCourtBell()
       break
     case 'reveal-word':
       sfxCash()

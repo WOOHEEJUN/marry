@@ -1,25 +1,32 @@
 import { motion } from 'framer-motion'
-import { Grunge, SirenLights, PrizeBar, PoliceTape, PrizeLadder } from '../fx'
+import CourtFrame from './CourtFrame'
+import { Plaque } from '../fx'
 import type { AppState, Config, GameConfig, VoiceState } from '../types'
 
-/** 감청 파형 (가짜 오실로스코프) */
+/** 진술 파형 */
 function Waveform({ active }: { active: boolean }) {
-  const bars = 64
+  const bars = 56
   return (
-    <div className="flex h-[7vh] items-center justify-center gap-[0.25vw]">
+    <div className="flex h-[6vh] items-center justify-center gap-[0.25vw]">
       {Array.from({ length: bars }).map((_, i) => (
         <motion.div
           key={i}
-          className="w-[0.5vw] rounded-sm"
+          className="w-[0.45vw] rounded-sm"
           style={{
             background: active
-              ? 'linear-gradient(180deg,#ff4437,#ffd400)'
-              : 'linear-gradient(180deg,#3a3a3a,#1e1e1e)',
-            boxShadow: active ? '0 0 8px rgba(255,212,0,.6)' : 'none',
+              ? 'linear-gradient(180deg,#ffd97a,#c9a227)'
+              : 'linear-gradient(180deg,#3a2010,#1a0d05)',
+            boxShadow: active ? '0 0 8px rgba(201,162,39,.6)' : 'none',
           }}
           animate={
             active
-              ? { height: [`${8 + Math.random() * 12}%`, `${30 + Math.random() * 70}%`, `${8 + Math.random() * 12}%`] }
+              ? {
+                  height: [
+                    `${8 + Math.random() * 12}%`,
+                    `${30 + Math.random() * 70}%`,
+                    `${8 + Math.random() * 12}%`,
+                  ],
+                }
               : { height: '12%' }
           }
           transition={{
@@ -48,200 +55,141 @@ export default function GameVoice({
 
   const maxL = gc.maxListens ?? 3
   const len = g.wordLength || 0
-  const word = g.word // 공개 전에는 null (서버가 안 보냄)
+  const word = g.word
   const wins = g.results.filter((r) => r === 'win').length
   const need = gc.clearThreshold ?? 3
   const listening = g.listensLeft < maxL && !g.revealed
 
   return (
-    <div className="tv-root tex-noise flex flex-col">
-      <Grunge />
-      <SirenLights intensity={0.3} />
-
-      <PrizeBar earned={state.prize.earned} meta={state.meta} bonus={state.prize.bonus} />
-
-      {/* 헤더 */}
-      <div className="relative z-20 flex items-center justify-between px-[2.5vw] pt-[1.2vh]">
-        <div>
-          <div className="txt-head text-[1.3vw] tracking-[0.3em] text-tape">{gc.no}</div>
-          <div className="txt-head txt-glow-blue text-[3.6vw] leading-none">{gc.title}</div>
-        </div>
-
-        <div className="plate tex-plate px-[1.5vw] py-[0.5vh] text-center">
-          <div className="txt-head text-[0.95vw] tracking-widest text-steel">현재 성과</div>
-          <div className="txt-num text-[2.2vw] leading-none text-steel-lt">
-            <span className={wins >= need ? 'text-gold' : 'text-white'}>{wins}</span>
-            <span className="text-white/40"> / {need}</span>
+    <CourtFrame state={state} config={config} gc={gc} g={g} compactHead>
+      {/* 상태 */}
+      <div className="mb-[0.8vh] flex items-center gap-[1.2vw]">
+        <Plaque className="px-[1vw] py-[0.3vh] text-center">
+          <div className="txt-court text-[0.75vw] text-[#4a3405]">신문 사항</div>
+          <div className="txt-num text-[1.5vw] leading-none text-[#2a1509]">
+            {g.round + 1} / {g.results.length}
           </div>
-        </div>
-
-        <div className="text-right">
-          <div className="txt-head text-[1.2vw] tracking-widest text-white/60">QUESTION</div>
-          <div className="txt-num txt-glow-gold text-[3.6vw] leading-none">
-            {g.round + 1}
-            <span className="text-[2vw] text-white/45"> / {g.results.length}</span>
+        </Plaque>
+        <Plaque className="px-[1vw] py-[0.3vh] text-center">
+          <div className="txt-court text-[0.75vw] text-[#4a3405]">진술 확인</div>
+          <div className="txt-num text-[1.5vw] leading-none text-[#2a1509]">
+            {wins} / {need}
           </div>
-        </div>
+        </Plaque>
       </div>
 
-      <PoliceTape
-        className="left-[-6%] top-[24vh] w-[120%] opacity-70"
-        rotate={2}
-        height={32}
-        speed="fast"
-        text="※ 감청 진행중 ※ 통신 보안 ※ 대외비 ※ "
-      />
-
-      {/* 파형 */}
-      <div className="relative z-20 mt-[3vh] px-[8vw]">
-        <Waveform active={listening} />
-      </div>
+      <Waveform active={listening} />
 
       {/* 글자 블록 */}
-      <div className="relative z-20 flex flex-1 flex-col items-center justify-center">
-        <div className="flex items-center gap-[1.4vw]">
-          {Array.from({ length: len }).map((_, i) => {
-            const ch = word ? word[i] : null
+      <div className="mt-[1vh] flex items-center gap-[1.2vw]">
+        {Array.from({ length: len }).map((_, i) => {
+          const ch = word ? word[i] : null
+          return (
+            <motion.div
+              key={i}
+              animate={g.listensLeft === 0 && !g.revealed ? { scale: [1, 1.04, 1] } : {}}
+              transition={{ repeat: Infinity, duration: 0.7 }}
+              style={{ perspective: 900 }}
+            >
+              <motion.div
+                initial={{ rotateY: 0 }}
+                animate={{ rotateY: g.revealed ? 360 : 0 }}
+                transition={{ delay: i * 0.16, duration: 0.6 }}
+                className={`panel flex items-center justify-center ${
+                  g.listensLeft === 0 && !g.revealed ? 'anim-blink-fast' : ''
+                }`}
+                style={{
+                  width: '9.5vw',
+                  height: '9.5vw',
+                  borderColor: g.revealed ? '#c9a227' : g.listensLeft === 0 ? '#c0392b' : '#170c04',
+                  background: g.revealed
+                    ? 'linear-gradient(180deg,#3a2604,#150b05)'
+                    : 'linear-gradient(180deg,#241409,#0d0703)',
+                  boxShadow: g.revealed
+                    ? '0 0 0 4px rgba(201,162,39,.35), 0 0 52px rgba(201,162,39,.7)'
+                    : 'inset 0 6px 20px rgba(0,0,0,.95)',
+                }}
+              >
+                {ch ? (
+                  <span className="txt-head txt-glow-gold text-[6vw] leading-none">{ch}</span>
+                ) : (
+                  <span className="txt-court text-[5vw] leading-none text-white/8">?</span>
+                )}
+              </motion.div>
+            </motion.div>
+          )
+        })}
+      </div>
+
+      <div className="txt-court mt-[1.2vh] text-[1.6vw] tracking-[0.3em] text-white/65">
+        {len} 글 자
+      </div>
+
+      {/* 청취 잔여 */}
+      <div className="mt-[1.4vh] flex items-center gap-[1vw]">
+        <span className="txt-court text-[1.5vw] tracking-widest text-brass-300">청취 잔여</span>
+        <div className="flex gap-[0.6vw]">
+          {Array.from({ length: maxL }).map((_, i) => {
+            const on = i < g.listensLeft
             return (
               <motion.div
                 key={i}
-                initial={false}
-                animate={
-                  g.revealed
-                    ? { rotateY: 0, scale: 1 }
-                    : g.listensLeft === 0
-                      ? { scale: [1, 1.04, 1] }
-                      : {}
-                }
-                transition={
-                  g.revealed
-                    ? { delay: i * 0.18, type: 'spring', stiffness: 200, damping: 14 }
-                    : { repeat: Infinity, duration: 0.7 }
-                }
-                className="relative"
-                style={{ perspective: 900 }}
-              >
-                <motion.div
-                  initial={{ rotateY: 0 }}
-                  animate={{ rotateY: g.revealed ? 360 : 0 }}
-                  transition={{ delay: i * 0.18, duration: 0.6 }}
-                  className={`plate flex items-center justify-center border-[6px] ${
-                    g.revealed
-                      ? 'border-gold bg-gradient-to-b from-[#3a2c00] to-black'
-                      : g.listensLeft === 0
-                        ? 'anim-blink-fast border-siren-red bg-black'
-                        : 'border-con-400 bg-black'
-                  }`}
-                  style={{
-                    width: '11vw',
-                    height: '11vw',
-                    boxShadow: g.revealed
-                      ? '0 0 0 4px rgba(255,199,44,.35), 0 0 60px rgba(255,199,44,.75)'
-                      : 'inset 0 6px 20px rgba(0,0,0,.95), 0 8px 24px rgba(0,0,0,.7)',
-                  }}
-                >
-                  {ch ? (
-                    <span className="txt-head txt-glow-gold text-[7vw] leading-none">{ch}</span>
-                  ) : (
-                    <span className="txt-head text-[6vw] leading-none text-white/8">?</span>
-                  )}
-                </motion.div>
-              </motion.div>
+                animate={on ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+                transition={{ repeat: on ? Infinity : 0, duration: 1.8, delay: i * 0.2 }}
+                className="rounded-full border-[4px] border-[#170c04]"
+                style={{
+                  width: '2.6vw',
+                  height: '2.6vw',
+                  background: on
+                    ? 'radial-gradient(circle at 35% 30%, #fff3c4, #c9a227 45%, #6d4f06 100%)'
+                    : 'radial-gradient(circle at 35% 30%, #3a2010, #150b05 70%)',
+                  boxShadow: on ? '0 0 22px rgba(201,162,39,.85)' : 'inset 0 3px 10px #000',
+                }}
+              />
             )
           })}
         </div>
-
-        <div className="txt-head mt-[2vh] text-[1.9vw] tracking-[0.3em] text-white/70">
-          {len} 글 자
-        </div>
-
-        {/* 청취 잔여 */}
-        <div className="mt-[2vh] flex items-center gap-[1.2vw]">
-          <span className="txt-head text-[1.8vw] tracking-widest text-tape">🔊 청취 잔여</span>
-          <div className="flex gap-[0.7vw]">
-            {Array.from({ length: maxL }).map((_, i) => {
-              const on = i < g.listensLeft
-              return (
-                <motion.div
-                  key={i}
-                  animate={on ? { scale: [1, 1.1, 1] } : { scale: 1 }}
-                  transition={{ repeat: on ? Infinity : 0, duration: 1.6, delay: i * 0.2 }}
-                  className="rounded-full border-[4px] border-black"
-                  style={{
-                    width: '3vw',
-                    height: '3vw',
-                    background: on
-                      ? 'radial-gradient(circle at 35% 30%, #fff3c4, #ffc72c 45%, #8a6508 100%)'
-                      : 'radial-gradient(circle at 35% 30%, #3a3a3a, #141414 70%)',
-                    boxShadow: on ? '0 0 22px rgba(255,199,44,.85)' : 'inset 0 3px 10px #000',
-                  }}
-                />
-              )
-            })}
-          </div>
-          {g.listensLeft === 0 && !g.revealed && (
-            <span className="txt-head anim-blink-fast text-[1.8vw] text-siren-red-lt">
-              ⚠️ 청취 종료 — 정답 제출!
-            </span>
-          )}
-        </div>
+        {g.listensLeft === 0 && !g.revealed && (
+          <span className="txt-court anim-blink-fast text-[1.6vw] text-reject-lt">
+            청취 종료 — 진술하십시오
+          </span>
+        )}
       </div>
 
-      {/* 하단 진행 상태 */}
-      <div className="relative z-20 flex items-center justify-center gap-[1.5vw] pb-[2vh]">
-        <div className="flex items-center gap-[0.7vw]">
-          {g.results.map((r, i) => (
-            <div
-              key={i}
-              className={`plate flex h-[5vh] w-[5.5vw] items-center justify-center border-[3px] ${
+      {/* 문항 표시 */}
+      <div className="mt-[1.2vh] flex items-center gap-[0.5vw]">
+        {g.results.map((r, i) => (
+          <div
+            key={i}
+            className="panel flex h-[3.4vh] w-[4.4vw] items-center justify-center"
+            style={{
+              background:
                 r === 'win'
-                  ? 'border-gold bg-gold/20'
+                  ? 'linear-gradient(180deg,#1f9d55,#06371c)'
                   : r === 'lose'
-                    ? 'border-siren-red bg-siren-red/20'
-                    : i === g.round
-                      ? 'border-tape bg-tape/10'
-                      : 'border-con-500 bg-black/40'
-              }`}
-            >
-              <span
-                className={`txt-head text-[1.1vw] ${
+                    ? 'linear-gradient(180deg,#c0392b,#4a0d08)'
+                    : 'linear-gradient(180deg,#241409,#150b05)',
+              borderColor: i === g.round ? '#c9a227' : '#170c04',
+            }}
+          >
+            <span
+              className={`txt-court text-[0.95vw] ${i === g.round && r === 'pending' ? 'anim-blink' : ''}`}
+              style={{
+                color:
                   r === 'win'
-                    ? 'text-gold'
+                    ? '#eafff2'
                     : r === 'lose'
-                      ? 'text-siren-red-lt'
+                      ? '#fff'
                       : i === g.round
-                        ? 'anim-blink text-tape'
-                        : 'text-con-300'
-                }`}
-              >
-                Q{i + 1} {r === 'win' ? '⭕' : r === 'lose' ? '❌' : i === g.round ? '▶' : '⬜'}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="plate tex-plate px-[1.2vw] py-[0.4vh] text-center">
-          <div className="txt-head text-[1vw] text-tape">
-            성공 조건 · {g.results.length}문제 중 {need}문제 이상 정답
+                        ? '#ffd97a'
+                        : 'rgba(255,255,255,.28)',
+              }}
+            >
+              {i + 1}
+            </span>
           </div>
-          <div className="txt-head text-[1.1vw] text-steel">
-            성공 시 보석금{' '}
-            <span className="txt-num txt-glow-gold text-[1.8vw]">
-              {state.meta.next}
-              {state.meta.unit}
-            </span>{' '}
-            도달
-          </div>
-        </div>
-
-        <PrizeLadder
-          ladder={config.prize.ladder}
-          cleared={state.meta.cleared}
-          unit={state.meta.unit}
-          maxTotal={state.meta.maxTotal}
-          bonus={state.prize.bonus}
-        />
+        ))}
       </div>
-    </div>
+    </CourtFrame>
   )
 }
