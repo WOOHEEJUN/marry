@@ -112,6 +112,8 @@ export interface CulpritState extends GameBase {
   picked: number | null
   guilty: number | null
   revealed: boolean
+  /** null = 전원 참여 */
+  participants: number[] | null
 }
 
 export interface VoiceState extends GameBase {
@@ -129,6 +131,10 @@ export interface BonusState extends GameBase {
   question: string
   category?: string
   answer: string | null
+  /** 이미 출제된 신문 사항 index */
+  asked: number[]
+  /** 남은 신문 사항 수 */
+  remaining: number
 }
 
 export interface SimpleState extends GameBase {

@@ -34,6 +34,8 @@ try {
 
   Copy-Item "$ROOT\dist"    "$tmp\dist"   -Recurse
   Copy-Item "$ROOT\server"  "$tmp\server" -Recurse
+  New-Item -ItemType Directory -Path "$tmp\scripts" -Force | Out-Null
+  Copy-Item "$ROOT\scripts\migrate-config.mjs" "$tmp\scripts\"
   Copy-Item "$ROOT\package.json"      "$tmp\"
   Copy-Item "$ROOT\package-lock.json" "$tmp\" -ErrorAction SilentlyContinue
   # config.json 은 서버 것이 우선 (당일 수정분 보존) — 없을 때만 복사되도록 별도 이름
@@ -53,10 +55,13 @@ try {
   # ── 4. 서버에서 설치 + 재시작 ──
   #   (파이프로 넘기면 BOM/CRLF 때문에 bash 가 깨지므로 파일로 전송해서 실행)
   Step 4 '서버 설치 및 재시작...'
+  #   Get-Content -Raw 는 Windows PowerShell 5.1 에서 ANSI 로 읽어 한글을 깨뜨리므로
+  #   반드시 .NET API 로 UTF-8 을 명시해 읽고 쓴다.
   $shSrc = Join-Path $ROOT 'scripts\remote-install.sh'
   $shTmp = Join-Path $env:TEMP 'marry-remote-install.sh'
-  $body  = (Get-Content $shSrc -Raw) -replace "`r`n", "`n"
-  [System.IO.File]::WriteAllText($shTmp, $body, (New-Object System.Text.UTF8Encoding($false)))
+  $utf8  = New-Object System.Text.UTF8Encoding($false)
+  $body  = [System.IO.File]::ReadAllText($shSrc, $utf8) -replace "`r`n", "`n"
+  [System.IO.File]::WriteAllText($shTmp, $body, $utf8)
 
   & scp -i $KEY -o StrictHostKeyChecking=accept-new $shTmp "${SERVER}:/tmp/marry-install.sh"
   if ($LASTEXITCODE -ne 0) { throw '설치 스크립트 전송 실패' }

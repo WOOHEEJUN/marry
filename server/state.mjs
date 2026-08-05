@@ -36,7 +36,15 @@ function initGame(g) {
   const pend = (n) => Array.from({ length: n }, () => 'pending')
 
   if (g.type === 'culprit') {
-    return { ...base, results: pend(g.rounds ?? 3), picked: null, guilty: null, revealed: false }
+    return {
+      ...base,
+      results: pend(g.rounds ?? 3),
+      picked: null,
+      guilty: null,
+      revealed: false,
+      // null = 전원 참여. 배열이면 해당 id 만 라인업에 오른다.
+      participants: null,
+    }
   }
   if (g.type === 'voice') {
     return {
@@ -69,7 +77,8 @@ function initGame(g) {
     }
   }
   if (g.type === 'bonus') {
-    return { ...base, results: pend((g.interviews || []).length), revealed: false }
+    // asked = 이미 출제된 신문 사항 (중복 없이 뽑기 위함)
+    return { ...base, results: pend((g.interviews || []).length), revealed: false, asked: [] }
   }
   // simple — 인용/기각 선고만
   return { ...base, results: [] }
@@ -266,6 +275,26 @@ export function reduce(state, config, action) {
       break
     }
 
+    // ── 재도전: 판정만 지우고 다시 겨룬다 (참여자·출제 이력은 유지) ──
+    case 'game.retry': {
+      if (g && gc) {
+        const fresh = initGame(gc)
+        const keep = {
+          participants: g.participants,
+          asked: g.asked,
+          drawn: g.drawn,
+          revives: g.revives,
+        }
+        state.games[id] = { ...fresh }
+        for (const [k, v] of Object.entries(keep)) {
+          if (v !== undefined) state.games[id][k] = v
+        }
+        syncPrize(state, config, `${gc.no} 재도전 개시`)
+        fx.push({ kind: 'revive' })
+      }
+      break
+    }
+
     // ── 재심: 기각된 공소사실을 다시 다툴 수 있게 (공소사실당 1회) ──
     case 'revive.grant': {
       const tg = state.games[action.gameId]
@@ -312,6 +341,31 @@ export function reduce(state, config, action) {
       break
 
     // ── 게임1: 범인찾기 ──
+    case 'culprit.setParticipants':
+      if (g?.type === 'culprit') {
+        const ids = Array.isArray(action.ids) ? action.ids : null
+        g.participants = ids && ids.length > 0 ? ids : null
+        // 참여자에서 빠진 사람이 선택돼 있으면 해제
+        if (g.participants) {
+          if (g.picked !== null && !g.participants.includes(g.picked)) g.picked = null
+          if (g.guilty !== null && !g.participants.includes(g.guilty)) g.guilty = null
+        }
+      }
+      break
+    case 'culprit.toggleParticipant':
+      if (g?.type === 'culprit') {
+        const all = (config.prosecutors || []).map((p) => p.id)
+        const cur = g.participants ?? all
+        const next = cur.includes(action.id)
+          ? cur.filter((x) => x !== action.id)
+          : [...cur, action.id].sort((a, b) => a - b)
+        g.participants = next.length === 0 ? null : next
+        if (g.participants) {
+          if (g.picked !== null && !g.participants.includes(g.picked)) g.picked = null
+          if (g.guilty !== null && !g.participants.includes(g.guilty)) g.guilty = null
+        }
+      }
+      break
     case 'culprit.setGuilty':
       if (g?.type === 'culprit') g.guilty = action.suspectId
       break
@@ -393,17 +447,45 @@ export function reduce(state, config, action) {
       }
       break
 
-    // ── 보너스: 천생연분 ──
+    // ── 증인 신문 ──
+    case 'bonus.pick': {
+      // 아직 출제하지 않은 신문 사항 중 무작위 1건
+      if (g?.type === 'bonus') {
+        const total = g.results.length
+        const left = []
+        for (let i = 0; i < total; i++) {
+          if (!(g.asked || []).includes(i)) left.push(i)
+        }
+        if (left.length === 0) {
+          note(state, '신문 사항이 모두 소진되었습니다')
+          break
+        }
+        const idx = left[Math.floor(Math.random() * left.length)]
+        g.round = idx
+        g.asked = [...(g.asked || []), idx]
+        g.revealed = false
+        fx.push({ kind: 'draw', index: idx })
+      }
+      break
+    }
+    case 'bonus.resetAsked':
+      if (g?.type === 'bonus') {
+        g.asked = []
+        note(state, '신문 사항 출제 이력 초기화')
+      }
+      break
     case 'bonus.next':
       if (g?.type === 'bonus') {
         if (g.round < g.results.length - 1) g.round += 1
         g.revealed = false
+        if (!(g.asked || []).includes(g.round)) g.asked = [...(g.asked || []), g.round]
       }
       break
     case 'bonus.setRound':
       if (g?.type === 'bonus') {
         g.round = Math.max(0, Math.min(g.results.length - 1, action.round))
         g.revealed = false
+        if (!(g.asked || []).includes(g.round)) g.asked = [...(g.asked || []), g.round]
       }
       break
     case 'bonus.reveal':
@@ -590,6 +672,8 @@ export function publicView(state, config) {
       const itv = (gc.interviews || [])[g.round] || {}
       games[id] = {
         ...g,
+        asked: g.asked || [],
+        remaining: g.results.length - (g.asked || []).length,
         question: itv.q || '',
         category: itv.cat || '',
         answer: g.revealed ? itv.a || '' : null,
@@ -613,7 +697,14 @@ export function controlView(state, config) {
       games[id] = { ...g, word, wordLength: word.length, allWords: gc.questions || [] }
     } else if (g.type === 'bonus') {
       const itv = (gc.interviews || [])[g.round] || {}
-      games[id] = { ...g, question: itv.q || '', category: itv.cat || '', answer: itv.a || '' }
+      games[id] = {
+        ...g,
+        asked: g.asked || [],
+        remaining: g.results.length - (g.asked || []).length,
+        question: itv.q || '',
+        category: itv.cat || '',
+        answer: itv.a || '',
+      }
     } else if (g.type === 'draw') {
       games[id] = { ...g, mission: g.current === null ? null : (gc.missions || [])[g.current] }
     } else {

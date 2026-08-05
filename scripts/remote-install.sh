@@ -3,30 +3,16 @@
 set -e
 
 mkdir -p /opt/marry
-rm -rf /opt/marry/dist /opt/marry/server
+rm -rf /opt/marry/dist /opt/marry/server /opt/marry/scripts
 tar -xzf /tmp/marry.tar.gz -C /opt/marry
 rm -f /tmp/marry.tar.gz
 
-# config.json 은 서버 것이 우선 (당일 수정분 보존)
 if [ ! -f /opt/marry/config.json ]; then
   cp /opt/marry/config.default.json /opt/marry/config.json
   echo "  config.json 신규 생성"
-elif ! grep -q '"extraCharges"' /opt/marry/config.json; then
-  # 구버전 설정 → 현재 스키마(법정 컨셉)로 마이그레이션.
-  # PIN 은 기존 값을 그대로 살린다.
-  OLDPIN=$(grep -o '"controlPin"[[:space:]]*:[[:space:]]*"[^"]*"' /opt/marry/config.json | sed 's/.*"\([^"]*\)"$/\1/')
-  cp /opt/marry/config.json "/opt/marry/config.backup.$(date +%s).json"
-  cp /opt/marry/config.default.json /opt/marry/config.json
-  if [ -n "$OLDPIN" ]; then
-    sed -i "s/\"controlPin\": \"[^\"]*\"/\"controlPin\": \"$OLDPIN\"/" /opt/marry/config.json
-    echo "  config.json 마이그레이션 (기존 PIN 유지)"
-  else
-    echo "  config.json 마이그레이션"
-  fi
-  # 상금 모델이 바뀌었으므로 진행 상태도 초기화
-  rm -f /opt/marry/state.json
 else
-  echo "  기존 config.json 유지"
+  # schema 가 바뀐 경우에만 교체하고, 사람이 채운 값은 옮겨 담는다
+  node /opt/marry/scripts/migrate-config.mjs
 fi
 
 cd /opt/marry

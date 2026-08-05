@@ -208,6 +208,8 @@ function CulpritControl({
   const ev = (gc.evidences || [])[g.round % (gc.evidences?.length || 1)]
   const wins = g.results.filter((r) => r === 'win').length
   const auto = g.guilty !== null && g.picked !== null ? g.guilty === g.picked : null
+  const joined = g.participants ?? config.prosecutors.map((p) => p.id)
+  const members = config.prosecutors.filter((p) => joined.includes(p.id))
 
   return (
     <>
@@ -226,12 +228,41 @@ function CulpritControl({
         </div>
       )}
 
+      {/* 참여 인원 */}
       <div>
         <div className="ops-sub" style={{ marginBottom: 6 }}>
-          1. 벌칙 음식을 먹은 사람 <span className="ops-hint">— 나만 보임</span>
+          1. 이번 라운드 참여 인원{' '}
+          <span className="ops-hint">— 고른 사람만 TV 라인업에 뜹니다 ({joined.length}명)</span>
         </div>
         <div className="ops-grid c3">
           {config.prosecutors.map((s) => (
+            <Btn
+              key={s.id}
+              size="sm"
+              kind={joined.includes(s.id) ? 'on' : 'ghost'}
+              onClick={() => d({ type: 'culprit.toggleParticipant', id: s.id })}
+            >
+              {joined.includes(s.id) ? '✓ ' : ''}
+              {s.name}
+            </Btn>
+          ))}
+        </div>
+        <Btn
+          size="sm"
+          kind="ghost"
+          block
+          onClick={() => d({ type: 'culprit.setParticipants', ids: null })}
+        >
+          전원 참여로 되돌리기
+        </Btn>
+      </div>
+
+      <div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>
+          2. 벌칙 음식을 먹은 사람 <span className="ops-hint">— 나만 보임</span>
+        </div>
+        <div className="ops-grid c3">
+          {members.map((s) => (
             <Btn
               key={s.id}
               kind={g.guilty === s.id ? 'warn' : ''}
@@ -245,10 +276,10 @@ function CulpritControl({
 
       <div>
         <div className="ops-sub" style={{ marginBottom: 6 }}>
-          2. {config.defendant.name}이 지목한 사람 <span className="ops-hint">— TV에 표시됨</span>
+          3. {config.defendant.name}이 지목한 사람 <span className="ops-hint">— TV에 표시됨</span>
         </div>
         <div className="ops-grid c3">
-          {config.prosecutors.map((s) => (
+          {members.map((s) => (
             <Btn
               key={s.id}
               kind={g.picked === s.id ? 'primary' : ''}
@@ -262,7 +293,7 @@ function CulpritControl({
       </div>
 
       <div>
-        <div className="ops-sub" style={{ marginBottom: 6 }}>3. 판정</div>
+        <div className="ops-sub" style={{ marginBottom: 6 }}>4. 판정</div>
         {auto !== null && !g.revealed && (
           <div className="ops-note" style={{ marginBottom: 8 }}>
             선택한 값 기준 <b>{auto ? '적중' : '빗나감'}</b> 입니다
@@ -725,6 +756,20 @@ function BonusControl({
           신문 {g.round + 1} / {g.results.length}
         </span>
         {g.category && <span className="ops-badge">{g.category}</span>}
+        <span className="ops-badge warn">남은 문항 {g.remaining ?? 0}</span>
+      </div>
+
+      <Btn
+        kind="warn"
+        size="lg"
+        block
+        disabled={(g.remaining ?? 0) <= 0}
+        onClick={() => d({ type: 'bonus.pick' })}
+      >
+        {(g.remaining ?? 0) > 0 ? '무작위 신문 사항 뽑기' : '남은 문항 없음'}
+      </Btn>
+      <div className="ops-hint" style={{ textAlign: 'center', marginTop: -4 }}>
+        이미 나온 문항은 다시 뽑히지 않습니다
       </div>
 
       <div className="ops-note">
@@ -761,7 +806,9 @@ function BonusControl({
 
       {/* 신문 사항 고르기 */}
       <details className="ops-details">
-        <summary style={{ padding: '8px 0' }}>신문 사항 고르기 ({itvs.length}개)</summary>
+        <summary style={{ padding: '8px 0' }}>
+          신문 사항 직접 고르기 ({itvs.length}개)
+        </summary>
         <div className="ops-list" style={{ marginTop: 8, maxHeight: 320 }}>
           {itvs.map((it, i) => (
             <button
@@ -782,7 +829,9 @@ function BonusControl({
               onClick={() => d({ type: 'bonus.setRound', round: i })}
             >
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                <span className="ops-hint">{it.cat} · </span>
+                <span className="ops-hint">
+                  {it.cat} {(g.asked || []).includes(i) ? '· 출제됨' : ''} ·{' '}
+                </span>
                 {it.q}
               </span>
               {g.results[i] !== 'pending' && (
@@ -796,6 +845,14 @@ function BonusControl({
             </button>
           ))}
         </div>
+        <Btn
+          size="sm"
+          kind="ghost"
+          block
+          onClick={() => d({ type: 'bonus.resetAsked' })}
+        >
+          출제 이력 초기화 (전부 다시 뽑기 가능)
+        </Btn>
       </details>
 
       <div className="ops-divider" />
@@ -1083,8 +1140,28 @@ export default function Controller() {
             )}
             {gc.type === 'simple' && <SimpleControl g={g as SimpleState} d={d} />}
 
+            {gc.type !== 'draw' && (
+              <>
+                <div className="ops-divider" />
+                <Btn
+                  kind="warn"
+                  size="lg"
+                  block
+                  onClick={() => {
+                    if (confirm(`${gc.charge || gc.title} 판정을 지우고 처음부터 다시 진행합니다.`))
+                      d({ type: 'game.retry' })
+                  }}
+                >
+                  이 게임 재도전
+                </Btn>
+                <div className="ops-hint" style={{ textAlign: 'center', marginTop: -4 }}>
+                  라운드 기록만 지웁니다. 참여 인원과 출제 이력은 그대로 유지됩니다.
+                </div>
+              </>
+            )}
+
             <details className="ops-details">
-              <summary style={{ padding: '8px 0' }}>직권 선고 · 심리 재개</summary>
+              <summary style={{ padding: '8px 0' }}>직권 선고 · 완전 초기화</summary>
               <div style={{ marginTop: 8 }}>
                 <div className="ops-grid c3">
                   <Btn size="sm" kind="success" onClick={() => d({ type: 'game.clear' })}>
@@ -1094,11 +1171,11 @@ export default function Controller() {
                     직권 기각
                   </Btn>
                   <Btn size="sm" kind="ghost" onClick={() => d({ type: 'game.reset' })}>
-                    심리 재개
+                    완전 초기화
                   </Btn>
                 </div>
                 <div className="ops-hint" style={{ marginTop: 6 }}>
-                  판정이 꼬였을 때만 사용하세요
+                  완전 초기화는 참여 인원·출제 이력까지 전부 지웁니다
                 </div>
               </div>
             </details>

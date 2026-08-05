@@ -91,6 +91,7 @@ export default function GameBonus({
             <div className="txt-court text-[0.95vw] tracking-[0.3em] text-[#a3005c]">
               신문 사항 {g.round + 1} / {g.results.length}
               {g.category ? ` · ${g.category}` : ''}
+              {typeof g.remaining === 'number' ? ` · 남은 문항 ${g.remaining}` : ''}
             </div>
             <div className="txt-court mt-[0.3vh] text-[2.3vw] leading-tight text-[#4a0028]">
               {g.question || '신문 사항 미입력'}

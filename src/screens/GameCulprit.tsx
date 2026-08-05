@@ -16,11 +16,14 @@ export default function GameCulprit({
   if (!g) return null
 
   const ev = (gc.evidences || [])[g.round % (gc.evidences?.length || 1)]
-  const people = config.prosecutors
+  // 이번 라운드에 실제로 음식을 먹는 사람만 라인업에 세운다
+  const people = g.participants
+    ? config.prosecutors.filter((p) => g.participants!.includes(p.id))
+    : config.prosecutors
   // 인원이 많으면 두 줄로 나누고 카드 높이를 줄인다
-  const cols = people.length > 7 ? Math.ceil(people.length / 2) : people.length
+  const cols = people.length > 6 ? Math.ceil(people.length / 2) : Math.max(people.length, 1)
   const rows = Math.ceil(people.length / cols)
-  const cardH = rows > 1 ? '15vh' : '24vh'
+  const cardH = rows > 1 ? '15vh' : people.length <= 4 ? '28vh' : '24vh'
 
   return (
     <CourtFrame state={state} config={config} gc={gc} g={g} compactHead>
@@ -43,6 +46,11 @@ export default function GameCulprit({
             </Plaque>
           </motion.div>
         )}
+
+        <Plaque className="px-[1vw] py-[0.3vh] text-center">
+          <div className="txt-court text-[0.75vw] tracking-widest text-[#4a3405]">참여 인원</div>
+          <div className="txt-num text-[1.5vw] leading-none text-[#2a1509]">{people.length}명</div>
+        </Plaque>
 
         <div className="flex items-center gap-[0.5vw]">
           {g.results.map((r, i) => (
