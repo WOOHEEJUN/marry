@@ -11,7 +11,7 @@ export default function Spectator() {
   const [audio, setAudio] = useState(false)
 
   useFxListener(fx, (f) => {
-    if (audio) playFx(f.kind)
+    if (audio) playFx(f.kind, f)
   })
 
   useEffect(() => {

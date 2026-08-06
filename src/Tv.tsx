@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSync, useFxListener } from './net'
 import { FxLayer, Gavel } from './fx'
-import { initAudio, playFx, sfxGavel } from './sound'
+import { initAudio, playFx, sfxGavel, sfxCourtBell } from './sound'
 import Intro from './screens/Intro'
 import Dashboard from './screens/Dashboard'
 import Defendant from './screens/Defendant'
@@ -28,13 +28,14 @@ export default function Tv({ role = 'tv' }: { role?: Role }) {
   }, [role])
 
   useFxListener(fx, (f) => {
-    if (audioReady) playFx(f.kind)
+    if (audioReady) playFx(f.kind, f)
   })
 
   const enable = () => {
     initAudio()
     setAudioReady(true)
-    setTimeout(() => sfxGavel(), 140)
+    setTimeout(() => sfxGavel(3), 140)
+    setTimeout(() => sfxCourtBell(), 900)
   }
 
   if (!state || !config) {

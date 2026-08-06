@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSync } from './net'
+import { SOUNDBOARD } from './sound'
 import type {
   AppState,
   BonusState,
@@ -892,6 +893,7 @@ export default function Controller() {
   )
   const { state, config, conn, status, dispatch } = useSync('control', pin)
   const [banner, setBanner] = useState('')
+  const [vol, setVol] = useState(1.6)
 
   useEffect(() => {
     if (status === 'denied') localStorage.removeItem(PIN_KEY)
@@ -1215,16 +1217,64 @@ export default function Controller() {
           </div>
         </Fold>
 
-        <Fold title="효과 수동 재생">
+        {/* 사운드보드 */}
+        <Card title="효과음" desc="TV 스피커로 즉시 재생됩니다. 게임 결과에는 영향 없음">
+          <div>
+            <div className="ops-sub" style={{ marginBottom: 6 }}>TV 볼륨</div>
+            <div className="ops-grid c4">
+              {(
+                [
+                  ['작게', 0.7],
+                  ['보통', 1.2],
+                  ['크게', 1.6],
+                  ['최대', 2.4],
+                ] as [string, number][]
+              ).map(([label, v]) => (
+                <Btn
+                  key={label}
+                  size="sm"
+                  kind={vol === v ? 'on' : 'ghost'}
+                  onClick={() => {
+                    setVol(v)
+                    d({ type: 'fx', kind: 'volume', payload: { value: v } })
+                  }}
+                >
+                  {label}
+                </Btn>
+              ))}
+            </div>
+          </div>
+
+          <div className="ops-divider" />
+
+          <div className="ops-sub">사운드보드</div>
+          <div className="ops-grid c3">
+            {SOUNDBOARD.map((s) => (
+              <Btn
+                key={s.id}
+                size="sm"
+                kind="ghost"
+                onClick={() => d({ type: 'fx', kind: 'sfx', payload: { name: s.id } })}
+              >
+                {s.label}
+              </Btn>
+            ))}
+          </div>
+        </Card>
+
+        <Fold title="화면 연출 수동 재생">
           <div className="ops-grid c3">
             {(
               [
                 ['지폐비', { kind: 'cash' }],
-                ['사이렌', { kind: 'siren' }],
-                ['실패음', { kind: 'fail' }],
-                ['하트', { kind: 'love-win' }],
+                ['인용 연출', { kind: 'clear', payload: { title: '직권', total: 0, unit: '만원' } }],
+                ['기각 연출', { kind: 'fail' }],
+                ['하트 폭발', { kind: 'love-win' }],
                 ['카운트다운', { kind: 'countdown' }],
-                ['유죄 도장', { kind: 'stamp', payload: { text: '유 죄', tone: 'red' } }],
+                ['인용 도장', { kind: 'stamp', payload: { text: '인 용', tone: 'grant' } }],
+                ['기각 도장', { kind: 'stamp', payload: { text: '기 각', tone: 'red' } }],
+                ['추첨 드럼롤', { kind: 'draw' }],
+                ['재심 종', { kind: 'revive' }],
               ] as [string, any][]
             ).map(([label, a]) => (
               <Btn
@@ -1237,7 +1287,6 @@ export default function Controller() {
               </Btn>
             ))}
           </div>
-          <div className="ops-hint">게임 결과에는 영향이 없습니다</div>
         </Fold>
 
         <Fold title="진행 기록">

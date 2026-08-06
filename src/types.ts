@@ -220,5 +220,11 @@ export interface Fx {
   text?: string
   tone?: 'red' | 'blue' | 'gold'
   title?: string
+  subtitle?: string
   left?: number
+  /** kind === 'sfx' — 사운드보드 항목 id */
+  name?: string
+  /** kind === 'volume' — 마스터 볼륨 */
+  value?: number
+  index?: number
 }
