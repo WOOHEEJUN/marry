@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSync } from './net'
+import { SLOTS, DEFAULT_SOUNDS, initAudio, playFile, setVolume } from './sound'
 import type { Config, GameConfig } from './types'
 
 const PIN_KEY = 'marry.pin'
@@ -133,6 +134,14 @@ export default function Admin() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [raw, setRaw] = useState(false)
   const [rawText, setRawText] = useState('')
+  const [sfxFiles, setSfxFiles] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/sfx')
+      .then((r) => r.json())
+      .then((j) => setSfxFiles(j.files || []))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (live && !cfg) {
@@ -984,6 +993,95 @@ export default function Admin() {
                 }
               >
                 검사 추가
+              </Btn>
+            </Card>
+
+            {/* 효과음 */}
+            <Card
+              title="효과음"
+              desc={`파일 ${sfxFiles.length}개 · ▶ 를 눌러 이 기기에서 들어보고 바꾸세요`}
+              defaultOpen={false}
+            >
+              <div className="ops-note">
+                실제 음원 파일을 씁니다. 기본 배치는 임의로 정한 것이라 들어보고 마음에 드는
+                파일로 바꾸는 걸 권합니다. 저장하면 TV·방청 화면에 바로 반영됩니다.
+              </div>
+
+              {sfxFiles.length === 0 && (
+                <div className="ops-note" style={{ borderColor: 'var(--warn)', color: '#fcd34d' }}>
+                  효과음 목록을 불러오지 못했습니다. 배포 후 다시 열어주세요.
+                </div>
+              )}
+
+              {SLOTS.map((slot) => {
+                const cursnd = cfg.sounds?.[slot.id] || DEFAULT_SOUNDS[slot.id] || ''
+                // 힌트에 맞는 파일을 앞으로, 나머지는 뒤로
+                const sorted = [...sfxFiles].sort((a, b) => {
+                  const ha = slot.hint && a.startsWith(slot.hint) ? 0 : 1
+                  const hb = slot.hint && b.startsWith(slot.hint) ? 0 : 1
+                  return ha - hb || a.localeCompare(b)
+                })
+                return (
+                  <div
+                    key={slot.id}
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'center',
+                      padding: '8px 0',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        flex: 'none',
+                        width: 104,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--text)',
+                      }}
+                    >
+                      {slot.label}
+                    </span>
+                    <select
+                      className="ops-input"
+                      style={{ flex: 1, minWidth: 0, fontSize: 13 }}
+                      value={cursnd}
+                      onChange={(e) =>
+                        up((c) => {
+                          if (!c.sounds) c.sounds = { ...DEFAULT_SOUNDS }
+                          c.sounds[slot.id] = e.target.value
+                        })
+                      }
+                    >
+                      {!sorted.includes(cursnd) && <option value={cursnd}>{cursnd}</option>}
+                      {sorted.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="ops-btn"
+                      style={{ flex: 'none', minWidth: 52 }}
+                      onClick={() => {
+                        initAudio()
+                        setVolume(1.2)
+                        void playFile(cursnd, { dur: 4 })
+                      }}
+                    >
+                      ▶
+                    </button>
+                  </div>
+                )
+              })}
+
+              <Btn
+                kind="ghost"
+                block
+                onClick={() => up((c) => void (c.sounds = { ...DEFAULT_SOUNDS }))}
+              >
+                기본 배치로 되돌리기
               </Btn>
             </Card>
 

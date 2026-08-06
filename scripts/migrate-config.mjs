@@ -49,6 +49,12 @@ for (const k of ['photo', 'cryPhoto']) {
 }
 if (cur.witness && cur.witness.photo) next.witness.photo = cur.witness.photo
 
+// ── 효과음 배치 ──
+if (cur.sounds && typeof cur.sounds === 'object') {
+  next.sounds = { ...(next.sounds || {}), ...cur.sounds }
+  console.log(`  효과음 배치 ${Object.keys(cur.sounds).length}건 이전`)
+}
+
 fs.copyFileSync(P, `${DIR}/config.backup.${Date.now()}.json`)
 fs.writeFileSync(P, JSON.stringify(next, null, 2))
 

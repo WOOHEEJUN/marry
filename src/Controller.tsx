@@ -893,7 +893,7 @@ export default function Controller() {
   )
   const { state, config, conn, status, dispatch } = useSync('control', pin)
   const [banner, setBanner] = useState('')
-  const [vol, setVol] = useState(1.6)
+  const [vol, setVol] = useState(1.5)
 
   useEffect(() => {
     if (status === 'denied') localStorage.removeItem(PIN_KEY)
@@ -1225,9 +1225,9 @@ export default function Controller() {
               {(
                 [
                   ['작게', 0.7],
-                  ['보통', 1.2],
-                  ['크게', 1.6],
-                  ['최대', 2.4],
+                  ['보통', 1.1],
+                  ['크게', 1.5],
+                  ['최대', 2.2],
                 ] as [string, number][]
               ).map(([label, v]) => (
                 <Btn

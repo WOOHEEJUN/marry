@@ -96,6 +96,8 @@ export interface Config {
   }
   prosecutors: Person[]
   games: GameConfig[]
+  /** 효과음 슬롯 → public/sfx 파일명 */
+  sounds?: Record<string, string>
   controlPin?: string
 }
 

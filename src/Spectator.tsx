@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSync, useFxListener } from './net'
 import { FxLayer, RollingNumber, PrizeLadder, Scales } from './fx'
-import { initAudio, playFx } from './sound'
+import { initAudio, playFx, setSoundMap } from './sound'
 import type { GameState } from './types'
 
 /** 폰 방청 모드 — 세로 화면 요약 뷰 */
@@ -285,6 +285,7 @@ export default function Spectator() {
         <button
           onClick={() => {
             initAudio()
+            setSoundMap(config.sounds)
             setAudio(true)
           }}
           className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-sm border-[3px] border-[#170c04] px-4 py-2"

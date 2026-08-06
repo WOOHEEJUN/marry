@@ -113,6 +113,20 @@ await app.register(fastifyWs, { options: { maxPayload: 1 << 20 } })
 
 app.get('/api/health', async () => ({ ok: true, up: process.uptime(), conn: counts() }))
 
+// 효과음 파일 목록 (관리자에서 미리듣기·교체용)
+app.get('/api/sfx', async () => {
+  try {
+    const dir = path.join(DIST, 'sfx')
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => /\.(ogg|oga|mp3|wav|opus)$/i.test(f))
+      .sort()
+    return { files }
+  } catch {
+    return { files: [] }
+  }
+})
+
 // 어드민: 설정 조회/수정 (PIN 필요)
 app.post('/api/config', async (req, reply) => {
   const { pin, config: next } = req.body || {}
@@ -208,7 +222,9 @@ if (fs.existsSync(DIST)) {
   await app.register(fastifyStatic, { root: DIST, prefix: '/' })
   // SPA 폴백
   app.setNotFoundHandler((req, reply) => {
-    if (req.raw.url?.startsWith('/api') || req.raw.url?.startsWith('/ws')) {
+    const u = req.raw.url || ''
+    // 없는 효과음/에셋까지 index.html 로 응답하면 디코딩이 이상하게 실패하므로 404 를 준다
+    if (u.startsWith('/api') || u.startsWith('/ws') || u.startsWith('/sfx') || u.startsWith('/img')) {
       return reply.code(404).send({ error: 'not found' })
     }
     return reply.type('text/html').send(fs.readFileSync(path.join(DIST, 'index.html')))
